@@ -1,51 +1,66 @@
 'use client';
 
-import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Parent } from '@/types';
+import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
+
 interface ParentFormProps {
-  parent?: Parent;
-  onSubmit: (data: Partial<Parent>) => void;
-  onCancel: () => void;
+  parent?: Parent; // for editing
+  onSubmit: (data: Partial<Parent>) => void; // callback for parent page
+  onCancel: () => void; // close dialog
 }
 
-export const ParentForm: React.FC<ParentFormProps> = ({
-  parent,
-  onSubmit,
-  onCancel,
-}) => {
+
+export const ParentForm: React.FC<ParentFormProps> = ({ parent, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState({
-    name: parent?.name || '',
-    phone: parent?.phone || '',
-    address: parent?.address || '',
-    occupation: parent?.occupation || '',
+    full_name: '',
     email: '',
+    phone: '',
+    occupation: '',
+    address: '',
+
   });
 
   const [loading, setLoading] = useState(false);
+
+  // ✅ Update formData when parent prop changes
+  useEffect(() => {
+    if (parent) {
+      setFormData({
+        full_name: parent.full_name || '',
+        email: parent.email || '',
+        phone: parent.phone || '',
+        occupation: parent.occupation || '',
+        address: parent.address || '',
+      });
+    } else {
+      setFormData({
+        full_name: '',
+        email: '',
+        phone: '',
+        occupation: '',
+        address: '',
+      });
+    }
+  }, [parent]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      onSubmit(formData);
-      
-      toast.success(parent ? 'Parent updated successfully!' : 'Parent created successfully!');
-    } catch (error) {
-      toast.error('Something went wrong!');
+      await onSubmit(formData); // ✅ call back to parent page
+    } catch (error: any) {
+      toast.error(error.message || 'Something went wrong!');
     } finally {
       setLoading(false);
     }
   };
-
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -54,11 +69,11 @@ export const ParentForm: React.FC<ParentFormProps> = ({
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="name">Full Name *</Label>
+          <Label htmlFor="full_name">Full Name *</Label>
           <Input
-            id="name"
-            value={formData.name}
-            onChange={(e) => handleChange('name', e.target.value)}
+            id="full_name"
+            value={formData.full_name}
+            onChange={(e) => handleChange('full_name', e.target.value)}
             placeholder="Enter full name"
             required
           />
@@ -95,6 +110,18 @@ export const ParentForm: React.FC<ParentFormProps> = ({
             placeholder="Enter occupation"
           />
         </div>
+
+        {/* <div className="space-y-2">
+          <Label htmlFor="password">Password *</Label>
+          <Input
+            id="password"
+            type="password"
+            value={formData.password}
+            onChange={(e) => handleChange('password', e.target.value)}
+            placeholder="Enter password"
+            required
+          />
+        </div> */}
       </div>
 
       <div className="space-y-2">
@@ -109,11 +136,8 @@ export const ParentForm: React.FC<ParentFormProps> = ({
       </div>
 
       <div className="flex justify-end gap-2 pt-4">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
         <Button type="submit" disabled={loading}>
-          {loading ? 'Saving...' : parent ? 'Update Parent' : 'Create Parent'}
+          {loading ? 'Saving...' : 'Create Parent'}
         </Button>
       </div>
     </form>

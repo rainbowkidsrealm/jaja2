@@ -78,7 +78,7 @@ export const ParentDashboard = () => {
       <div className="bg-gradient-to-r from-purple-600 to-purple-800 text-white p-6 rounded-lg">
         <h2 className="text-2xl font-bold mb-2">Welcome back, Parent!</h2>
         <p className="text-purple-100">
-          Stay updated with {children[0]?.name}'s academic progress and school activities.
+          Stay updated with {children[0]?.name}  academic progress and school activities.
         </p>
       </div>
 

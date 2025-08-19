@@ -37,7 +37,8 @@ export interface Teacher {
 export interface Parent {
   id: number;
   userId: number;
-  name: string;
+  full_name: string;
+  email: string;
   phone?: string;
   address?: string;
   occupation?: string;

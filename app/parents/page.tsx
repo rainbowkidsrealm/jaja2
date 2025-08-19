@@ -1,26 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import { ParentForm } from '@/components/Forms/ParentForm';
 import { Layout } from '@/components/Layout/Layout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,10 +12,33 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Search, Edit, Eye, Trash2, Users } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Parent } from '@/types';
-import { ParentForm } from '@/components/Forms/ParentForm';
+import { Edit, Eye, Plus, Search, Trash2, Users } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import {
+  getParentsApi,
+  createParentApi,
+} from '@/lib/api';
 
 export default function ParentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -42,47 +46,33 @@ export default function ParentsPage() {
   const [editingParent, setEditingParent] = useState<Parent | undefined>();
   const [deleteParent, setDeleteParent] = useState<Parent | undefined>();
 
-  // Mock data - replace with actual API calls
-  const [parents, setParents] = useState<Parent[]>([
-    {
-      id: 1,
-      userId: 5,
-      name: 'Robert Johnson',
-      phone: '+1234567890',
-      occupation: 'Software Engineer',
-      address: '123 Main St, City',
-      children: [
-        { id: 1, studentId: 'STU001', name: 'Alice Johnson', classId: 1, isActive: true }
-      ]
-    },
-    {
-      id: 2,
-      userId: 6,
-      name: 'Mary Smith',
-      phone: '+1234567891',
-      occupation: 'Doctor',
-      address: '456 Oak Ave, City',
-      children: [
-        { id: 2, studentId: 'STU002', name: 'Bob Smith', classId: 1, isActive: true }
-      ]
-    },
-    {
-      id: 3,
-      userId: 7,
-      name: 'James Davis',
-      phone: '+1234567892',
-      occupation: 'Business Owner',
-      address: '789 Pine Rd, City',
-      children: [
-        { id: 3, studentId: 'STU003', name: 'Carol Davis', classId: 2, isActive: true }
-      ]
-    },
-  ]);
+  const [parents, setParents] = useState<Parent[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredParents = parents.filter(parent =>
-    parent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    parent.occupation?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    parent.children?.some(child => child.name.toLowerCase().includes(searchTerm.toLowerCase()))
+  // Fetch parents from API
+  const fetchParents = async () => {
+    try {
+      setLoading(true);
+      const data = await getParentsApi();
+      setParents(data);
+    } catch (error) {
+      console.error('Failed to fetch parents:', error);
+      toast.error('Failed to fetch parents');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchParents();
+  }, []);
+
+  // Filter parents by search term
+  const filteredParents = parents.filter(
+    (p) =>
+      p.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.occupation?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleAddParent = () => {
@@ -99,33 +89,40 @@ export default function ParentsPage() {
     setDeleteParent(parent);
   };
 
-  const confirmDelete = () => {
-    if (deleteParent) {
-      setParents(prev => prev.filter(p => p.id !== deleteParent.id));
+  const confirmDelete = async () => {
+    if (!deleteParent) return;
+
+    try {
+      //await deleteParentApi(deleteParent.id);
+      setParents((prev) => prev.filter((p) => p.id !== deleteParent.id));
       toast.success('Parent deleted successfully!');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete parent');
+    } finally {
       setDeleteParent(undefined);
     }
   };
 
-  const handleFormSubmit = (data: Partial<Parent>) => {
-    if (editingParent) {
-      // Update existing parent
-      setParents(prev => prev.map(p => 
-        p.id === editingParent.id 
-          ? { ...p, ...data, id: editingParent.id }
-          : p
-      ));
-    } else {
-      // Add new parent
-      const newParent: Parent = {
-        id: Math.max(...parents.map(p => p.id)) + 1,
-        userId: Math.max(...parents.map(p => p.userId)) + 1,
-        ...data as Parent,
-      };
-      setParents(prev => [...prev, newParent]);
+  // Called after form submit
+  const handleFormSubmit = async (data: Partial<Parent>) => {
+    try {
+      if (editingParent) {
+        // Update parent
+        // await updateParentApi(editingParent.id, data);
+        toast.success('Parent updated successfully!');
+      } else {
+        // Create new parent
+        await createParentApi(data as any); // ✅ pass correct type
+        toast.success('Parent created successfully!');
+      }
+
+      await fetchParents(); // ✅ refresh list immediately
+    } catch (error: any) {
+      toast.error(error.message || 'Something went wrong!');
+    } finally {
+      setIsDialogOpen(false);
+      setEditingParent(undefined);
     }
-    setIsDialogOpen(false);
-    setEditingParent(undefined);
   };
 
   return (
@@ -139,14 +136,10 @@ export default function ParentsPage() {
               Manage parent information and contact details
             </p>
           </div>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button className="flex items-center gap-2" onClick={handleAddParent}>
-                <Plus className="h-4 w-4" />
-                Add Parent
-              </Button>
-            </DialogTrigger>
-          </Dialog>
+          <Button className="flex items-center gap-2" onClick={handleAddParent}>
+            <Plus className="h-4 w-4" />
+            Add Parent
+          </Button>
         </div>
 
         {/* Add/Edit Parent Dialog */}
@@ -169,17 +162,24 @@ export default function ParentsPage() {
         </Dialog>
 
         {/* Delete Confirmation Dialog */}
-        <AlertDialog open={!!deleteParent} onOpenChange={() => setDeleteParent(undefined)}>
+        <AlertDialog
+          open={!!deleteParent}
+          onOpenChange={() => setDeleteParent(undefined)}
+        >
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Parent</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete {deleteParent?.name}? This action cannot be undone.
+                Are you sure you want to delete {deleteParent?.full_name}? This
+                action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
+              <AlertDialogAction
+                onClick={confirmDelete}
+                className="bg-red-600 hover:bg-red-700"
+              >
                 Delete
               </AlertDialogAction>
             </AlertDialogFooter>
@@ -198,7 +198,7 @@ export default function ParentsPage() {
               <p className="text-xs text-muted-foreground">Registered parents</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Active Children</CardTitle>
@@ -210,26 +210,26 @@ export default function ParentsPage() {
               <p className="text-xs text-muted-foreground">Total students</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Single Child</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {parents.filter(p => p.children?.length === 1).length}
+                {parents.filter((p) => p.children?.length === 1).length}
               </div>
               <p className="text-xs text-muted-foreground">Families</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Multiple Children</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {parents.filter(p => (p.children?.length || 0) > 1).length}
+                {parents.filter((p) => (p.children?.length || 0) > 1).length}
               </div>
               <p className="text-xs text-muted-foreground">Families</p>
             </CardContent>
@@ -242,7 +242,7 @@ export default function ParentsPage() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search parents by name, occupation, or child name..."
+                placeholder="Search parents by name, occupation, or email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -278,7 +278,7 @@ export default function ParentsPage() {
                             <Users className="h-5 w-5 text-purple-600" />
                           </div>
                           <div>
-                            <p className="font-medium">{parent.name}</p>
+                            <p className="font-medium">{parent.full_name}</p>
                           </div>
                         </div>
                       </TableCell>
@@ -286,12 +286,17 @@ export default function ParentsPage() {
                       <TableCell>
                         <div>
                           <p className="text-sm">{parent.phone}</p>
+                          <p className="text-xs text-muted-foreground">{parent.email}</p>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
                           {parent.children?.map((child) => (
-                            <Badge key={child.id} variant="secondary" className="text-xs">
+                            <Badge
+                              key={child.id}
+                              variant="secondary"
+                              className="text-xs"
+                            >
                               {child.name}
                             </Badge>
                           ))}
@@ -305,16 +310,16 @@ export default function ParentsPage() {
                           <Button variant="ghost" size="sm">
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
+                          <Button
+                            variant="ghost"
                             size="sm"
                             onClick={() => handleEditParent(parent)}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             className="text-red-600 hover:text-red-700"
                             onClick={() => handleDeleteParent(parent)}
                           >
@@ -327,10 +332,12 @@ export default function ParentsPage() {
                 </TableBody>
               </Table>
             </div>
-            
-            {filteredParents.length === 0 && (
+
+            {!loading && filteredParents.length === 0 && (
               <div className="text-center py-8">
-                <p className="text-muted-foreground">No parents found matching your search.</p>
+                <p className="text-muted-foreground">
+                  No parents found matching your search.
+                </p>
               </div>
             )}
           </CardContent>
