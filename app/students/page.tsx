@@ -19,7 +19,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -34,24 +33,71 @@ import {
 import { Plus, Search, Edit, Eye, Trash2, GraduationCap, Users } from 'lucide-react';
 import { Student } from '@/types';
 import { StudentForm } from '@/components/Forms/StudentForm';
-import { useStudents } from '@/hooks/useApi';
 import { mockStudents } from '@/lib/mockData';
 
 export default function StudentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState('all');
+  const [selectedSection, setSelectedSection] = useState('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | undefined>();
   const [deleteStudent, setDeleteStudent] = useState<Student | undefined>();
   const [students, setStudents] = useState<Student[]>(mockStudents);
+  const [classes, setClasses] = useState<string[]>(['all']);
+  const [sections, setSections] = useState<string[]>(['all']);
+  const [loading, setLoading] = useState(false);
 
-  const { loading } = useStudents();
+  // Fetch classes
+  useEffect(() => {
+    const fetchClasses = async () => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem('access_token');
+        console.log(token);
+        const response = await fetch('https://jaja-render-api.onrender.com/classes', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        const data = await response.json();
+        setClasses(['all', ...data.map((item: { name: string }) => item.name)]);
+      } catch (error) {
+        console.error('Error fetching classes:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchClasses();
+  }, []);
+
+  // Fetch sections
+  useEffect(() => {
+    const fetchSections = async () => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem('access_token');
+        const response = await fetch('https://jaja-render-api.onrender.com/sections', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        const data = await response.json();
+        setSections(['all', ...data.map((item: { name: string }) => item.name)]);
+      } catch (error) {
+        console.error('Error fetching sections:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSections();
+  }, []);
 
   const filteredStudents = students.filter(student => {
     const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          student.studentId.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesClass = selectedClass === 'all' || student.class?.name === selectedClass;
-    return matchesSearch && matchesClass;
+    const matchesSection = selectedSection === 'all' || student.section?.name === selectedSection;
+    return matchesSearch && matchesClass && matchesSection;
   });
 
   const handleAddStudent = () => {
@@ -75,7 +121,8 @@ export default function StudentsPage() {
     }
   };
 
-  const handleFormSubmit = (data: Partial<Student>) => {
+  const handleFormSubmit = async (data: Partial<Student>) => {
+    const token = localStorage.getItem('access_token');
     if (editingStudent) {
       // Update existing student
       setStudents(prev => prev.map(s => 
@@ -83,14 +130,38 @@ export default function StudentsPage() {
           ? { ...s, ...data, id: editingStudent.id }
           : s
       ));
+      try {
+        await fetch(`/students/${editingStudent.id}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+        });
+      } catch (error) {
+        console.error('Error updating student:', error);
+      }
     } else {
       // Add new student
       const newStudent: Student = {
-        id: Math.max(...students.map(s => s.id)) + 1,
         ...data as Student,
+        id: Math.max(...students.map(s => s.id), 0) + 1,
         isActive: true,
       };
       setStudents(prev => [...prev, newStudent]);
+      try {
+        await fetch('/students', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(newStudent),
+        });
+      } catch (error) {
+        console.error('Error adding student:', error);
+      }
     }
     setIsDialogOpen(false);
     setEditingStudent(undefined);
@@ -136,6 +207,8 @@ export default function StudentsPage() {
                 setIsDialogOpen(false);
                 setEditingStudent(undefined);
               }}
+              classes={classes}
+              sections={sections}
             />
           </DialogContent>
         </Dialog>
@@ -227,12 +300,21 @@ export default function StudentsPage() {
                 value={selectedClass}
                 onChange={(e) => setSelectedClass(e.target.value)}
                 className="px-3 py-2 border border-border rounded-md bg-background"
+                disabled={loading}
               >
-                <option value="all">All Classes</option>
-                <option value="Grade 9">Grade 9</option>
-                <option value="Grade 10">Grade 10</option>
-                <option value="Grade 11">Grade 11</option>
-                <option value="Grade 12">Grade 12</option>
+                {classes.map((cls) => (
+                  <option key={cls} value={cls}>{cls}</option>
+                ))}
+              </select>
+              <select
+                value={selectedSection}
+                onChange={(e) => setSelectedSection(e.target.value)}
+                className="px-3 py-2 border border-border rounded-md bg-background"
+                disabled={loading}
+              >
+                {sections.map((sec) => (
+                  <option key={sec} value={sec}>{sec}</option>
+                ))}
               </select>
             </div>
           </CardContent>
@@ -280,10 +362,12 @@ export default function StudentsPage() {
                       </TableCell>
                       <TableCell>{student.class?.name}</TableCell>
                       <TableCell>{student.section?.name}</TableCell>
-                      <TableCell>{student.parent?.name}</TableCell>
+                      <TableCell>{student.parent?.full_name}</TableCell>
                       <TableCell>
                         <Badge className={getGenderColor(student.gender)}>
-                          {student.gender?.charAt(0).toUpperCase() + student.gender?.slice(1)}
+                          {student.gender 
+                            ? student.gender.charAt(0).toUpperCase() + student.gender.slice(1)
+                            : 'Unknown'}
                         </Badge>
                       </TableCell>
                       <TableCell>
