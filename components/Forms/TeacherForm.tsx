@@ -26,7 +26,7 @@ export const TeacherForm: React.FC<TeacherFormProps> = ({
     address: teacher?.address || '',
     qualification: teacher?.qualification || '',
     experienceYears: teacher?.experienceYears?.toString() || '',
-    salary: teacher?.salary?.toString() || '',
+    // salary: teacher?.salary?.toString() || '',
     joinDate: teacher?.joinDate || '',
     email: '',
   });
@@ -43,7 +43,7 @@ export const TeacherForm: React.FC<TeacherFormProps> = ({
       onSubmit({
         ...formData,
         experienceYears: parseInt(formData.experienceYears) || 0,
-        salary: parseFloat(formData.salary) || 0,
+        // salary: parseFloat(formData.salary) || 0,
         isActive: true,
       });
       
@@ -127,7 +127,7 @@ export const TeacherForm: React.FC<TeacherFormProps> = ({
           />
         </div>
 
-        <div className="space-y-2">
+        {/* <div className="space-y-2">
           <Label htmlFor="salary">Salary</Label>
           <Input
             id="salary"
@@ -136,7 +136,7 @@ export const TeacherForm: React.FC<TeacherFormProps> = ({
             onChange={(e) => handleChange('salary', e.target.value)}
             placeholder="Enter salary"
           />
-        </div>
+        </div> */}
 
         <div className="space-y-2">
           <Label htmlFor="joinDate">Join Date</Label>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Layout } from '@/components/Layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,6 +35,7 @@ import { Plus, Search, Edit, Eye, Trash2, GraduationCap } from 'lucide-react';
 import { Teacher } from '@/types';
 import { TeacherForm } from '@/components/Forms/TeacherForm';
 import { toast } from 'sonner';
+import {addTeacherApi, getTeachersApi} from '@/lib/api'
 
 export default function TeachersPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -42,45 +43,66 @@ export default function TeachersPage() {
   const [editingTeacher, setEditingTeacher] = useState<Teacher | undefined>();
   const [deleteTeacher, setDeleteTeacher] = useState<Teacher | undefined>();
 
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [loadingTeachers, setLoadingTeachers] = useState(false);
+  
+  const fetchTeachers = async () => {
+    try {
+      setLoadingTeachers(true);
+      const data = await getTeachersApi();
+      setTeachers(data);
+    } catch (error) {
+      console.error("Failed to fetch teachers:", error);
+      toast.error("Failed to fetch teachers");
+    } finally {
+      setLoadingTeachers(false);
+    }
+  };
+  
+  useEffect(() => {
+    fetchTeachers();
+  }, []);
+  
+
   // Mock data - replace with actual API calls
-  const [teachers, setTeachers] = useState<Teacher[]>([
-    {
-      id: 1,
-      userId: 2,
-      teacherId: 'T001',
-      name: 'Jane Smith',
-      phone: '+1234567890',
-      qualification: 'M.Sc Mathematics',
-      experienceYears: 5,
-      salary: 50000,
-      joinDate: '2019-08-15',
-      isActive: true,
-    },
-    {
-      id: 2,
-      userId: 3,
-      teacherId: 'T002',
-      name: 'John Doe',
-      phone: '+1234567891',
-      qualification: 'M.A English',
-      experienceYears: 8,
-      salary: 55000,
-      joinDate: '2016-07-01',
-      isActive: true,
-    },
-    {
-      id: 3,
-      userId: 4,
-      teacherId: 'T003',
-      name: 'Sarah Wilson',
-      phone: '+1234567892',
-      qualification: 'M.Sc Physics',
-      experienceYears: 3,
-      salary: 48000,
-      joinDate: '2021-01-10',
-      isActive: true,
-    },
-  ]);
+  // const [teachers, setTeachers] = useState<Teacher[]>([
+  //   {
+  //     id: 1,
+  //     userId: 2,
+  //     teacherId: 'T001',
+  //     name: 'Jane Smith',
+  //     phone: '+1234567890',
+  //     qualification: 'M.Sc Mathematics',
+  //     experienceYears: 5,
+  //     salary: 50000,
+  //     joinDate: '2019-08-15',
+  //     isActive: true,
+  //   },
+  //   {
+  //     id: 2,
+  //     userId: 3,
+  //     teacherId: 'T002',
+  //     name: 'John Doe',
+  //     phone: '+1234567891',
+  //     qualification: 'M.A English',
+  //     experienceYears: 8,
+  //     salary: 55000,
+  //     joinDate: '2016-07-01',
+  //     isActive: true,
+  //   },
+  //   {
+  //     id: 3,
+  //     userId: 4,
+  //     teacherId: 'T003',
+  //     name: 'Sarah Wilson',
+  //     phone: '+1234567892',
+  //     qualification: 'M.Sc Physics',
+  //     experienceYears: 3,
+  //     salary: 48000,
+  //     joinDate: '2021-01-10',
+  //     isActive: true,
+  //   },
+  // ]);
 
   const filteredTeachers = teachers.filter(teacher =>
     teacher.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -110,27 +132,61 @@ export default function TeachersPage() {
     }
   };
 
-  const handleFormSubmit = (data: Partial<Teacher>) => {
+// Called after teacher form submit
+// const handleFormSubmit = async (data: Partial<Teacher>) => {
+//   try {
+//     if (editingTeacher) {
+//       // ✅ Update teacher via API
+//       // await updateTeacherApi(editingTeacher.id, data);
+//       toast.success('Teacher updated successfully!');
+//     } else {
+//       // ✅ Add new teacher via API
+//       await addTeacherApi(data as any);
+//       toast.success('Teacher created successfully!');
+//     }
+
+//     // await fetchTeachers(); // ✅ refresh list immediately
+//   } catch (error: any) {
+//     toast.error(error.message || 'Something went wrong!');
+//   } finally {
+//     setIsDialogOpen(false);
+//     setEditingTeacher(undefined);
+//   }
+// };
+
+const handleFormSubmit = async (data: Partial<Teacher>) => {
+  try {
     if (editingTeacher) {
-      // Update existing teacher
-      setTeachers(prev => prev.map(t => 
-        t.id === editingTeacher.id 
-          ? { ...t, ...data, id: editingTeacher.id }
-          : t
-      ));
+      // later we'll create updateTeacherApi for this
+      // await updateTeacherApi(editingTeacher.id, data);
+      toast.success("Teacher updated successfully!");
     } else {
-      // Add new teacher
-      const newTeacher: Teacher = {
-        id: Math.max(...teachers.map(t => t.id)) + 1,
-        userId: Math.max(...teachers.map(t => t.userId)) + 1,
-        ...data as Teacher,
-        isActive: true,
-      };
-      setTeachers(prev => [...prev, newTeacher]);
+      await addTeacherApi({
+        teacher_id: data.teacherId!,
+        name: data.name!,
+        phone: data.phone!,
+        address: data.address || "",
+        qualification: data.qualification || "",
+        experience_years: data.experienceYears || 0,
+        salary: data.salary || 0,
+        join_date: data.joinDate!,
+        profile_image: data.profileImage || "",
+        is_active: data.isActive ? 1 : 0,
+      });
+
+      toast.success("Teacher added successfully!");
     }
+
+    // await fetchTeachers(); // refresh teachers list
+  } catch (error: any) {
+    toast.error(error.message || "Something went wrong!");
+  } finally {
     setIsDialogOpen(false);
     setEditingTeacher(undefined);
-  };
+  }
+};
+
+
 
   return (
     <Layout title="Teachers Management">
@@ -275,7 +331,7 @@ export default function TeachersPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredTeachers.map((teacher) => (
-                    <TableRow key={teacher.id}>
+                    <TableRow key={teacher.teacherId}>
                       <TableCell className="font-medium">
                         {teacher.teacherId}
                       </TableCell>

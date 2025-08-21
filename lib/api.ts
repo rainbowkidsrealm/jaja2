@@ -117,3 +117,47 @@ export const getParentsApi = async () => {
 
   return res.json(); // returns array of parents
 };
+
+
+
+  export const addTeacherApi = async (teacherData: {
+    teacher_id: string;
+    name: string;
+    phone: string;
+    address: string;
+    qualification: string;
+    experience_years: number;
+    salary: number;
+    join_date: string; // YYYY-MM-DD
+    profile_image: string;
+    is_active: number;
+  }) => {
+    const res = await authFetch(`${API_URL}/addteachers`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(teacherData),
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Failed to add teacher: ${errorText}`);
+    }
+
+    return res.json();
+  };
+
+
+  export const getTeachersApi = async () => {
+    const res = await authFetch(`${API_URL}/teacherlist`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+  
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Failed to fetch teachers: ${errorText}`);
+    }
+  
+    return res.json(); // array of teachers
+  };
+  

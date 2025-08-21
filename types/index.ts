@@ -20,7 +20,6 @@ export interface Admin {
 
 export interface Teacher {
   id: number;
-  userId: number;
   teacherId: string;
   name: string;
   phone?: string;

@@ -7,7 +7,7 @@ import { Toaster } from 'sonner';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'SchoolMS - School Management System',
+  title: 'Jaja - School Management System',
   description: 'Comprehensive school management system for administrators, teachers, and parents',
 };
 

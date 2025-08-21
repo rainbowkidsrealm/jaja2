@@ -153,7 +153,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           <div className="flex items-center space-x-2">
             <School className="h-8 w-8 text-primary" />
             <div>
-              <h2 className="font-bold text-lg">SchoolMS</h2>
+              <h2 className="font-bold text-lg">Jaja</h2>
               <p className="text-xs text-muted-foreground">Management System</p>
             </div>
           </div>
