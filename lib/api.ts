@@ -119,22 +119,23 @@ export const getParentsApi = async () => {
 };
 
 
-
-  export const addTeacherApi = async (teacherData: {
-    teacher_id: string;
-    name: string;
-    phone: string;
-    address: string;
-    qualification: string;
-    experience_years: number;
-    salary: number;
-    join_date: string; // YYYY-MM-DD
-    profile_image: string;
-    is_active: number;
-  }) => {
-    const res = await authFetch(`${API_URL}/addteachers`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+// lib/api.ts
+export const addTeacherApi = async (teacherData: {
+  teacher_id: string;
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  qualification: string;
+  experience_years: number;
+  salary: number;
+  join_date: string; // YYYY-MM-DD
+  is_active: number;
+}) => {
+  try {
+    const res = await authFetch(`${API_URL}/addteachers`, { // Changed to lowercase for consistency
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(teacherData),
     });
 
@@ -143,9 +144,12 @@ export const getParentsApi = async () => {
       throw new Error(`Failed to add teacher: ${errorText}`);
     }
 
-    return res.json();
-  };
-
+    return await res.json();
+  } catch (error) {
+    console.error('Add teacher API error:', error);
+    throw error; // Re-throw to be caught by the caller
+  }
+};
 
   export const getTeachersApi = async () => {
     const res = await authFetch(`${API_URL}/teacherlist`, {

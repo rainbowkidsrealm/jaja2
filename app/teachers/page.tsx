@@ -35,78 +35,36 @@ import { Plus, Search, Edit, Eye, Trash2, GraduationCap } from 'lucide-react';
 import { Teacher } from '@/types';
 import { TeacherForm } from '@/components/Forms/TeacherForm';
 import { toast } from 'sonner';
-import {addTeacherApi, getTeachersApi} from '@/lib/api'
+import { addTeacherApi, getTeachersApi } from '@/lib/api';
 
 export default function TeachersPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | undefined>();
   const [deleteTeacher, setDeleteTeacher] = useState<Teacher | undefined>();
-
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loadingTeachers, setLoadingTeachers] = useState(false);
-  
+
   const fetchTeachers = async () => {
     try {
       setLoadingTeachers(true);
       const data = await getTeachersApi();
       setTeachers(data);
     } catch (error) {
-      console.error("Failed to fetch teachers:", error);
-      toast.error("Failed to fetch teachers");
+      console.error('Failed to fetch teachers:', error);
+      toast.error('Failed to fetch teachers');
     } finally {
       setLoadingTeachers(false);
     }
   };
-  
+
   useEffect(() => {
     fetchTeachers();
   }, []);
-  
-
-  // Mock data - replace with actual API calls
-  // const [teachers, setTeachers] = useState<Teacher[]>([
-  //   {
-  //     id: 1,
-  //     userId: 2,
-  //     teacherId: 'T001',
-  //     name: 'Jane Smith',
-  //     phone: '+1234567890',
-  //     qualification: 'M.Sc Mathematics',
-  //     experienceYears: 5,
-  //     salary: 50000,
-  //     joinDate: '2019-08-15',
-  //     isActive: true,
-  //   },
-  //   {
-  //     id: 2,
-  //     userId: 3,
-  //     teacherId: 'T002',
-  //     name: 'John Doe',
-  //     phone: '+1234567891',
-  //     qualification: 'M.A English',
-  //     experienceYears: 8,
-  //     salary: 55000,
-  //     joinDate: '2016-07-01',
-  //     isActive: true,
-  //   },
-  //   {
-  //     id: 3,
-  //     userId: 4,
-  //     teacherId: 'T003',
-  //     name: 'Sarah Wilson',
-  //     phone: '+1234567892',
-  //     qualification: 'M.Sc Physics',
-  //     experienceYears: 3,
-  //     salary: 48000,
-  //     joinDate: '2021-01-10',
-  //     isActive: true,
-  //   },
-  // ]);
 
   const filteredTeachers = teachers.filter(teacher =>
     teacher.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    teacher.teacherId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    teacher.teacher_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
     teacher.qualification?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -132,61 +90,37 @@ export default function TeachersPage() {
     }
   };
 
-// Called after teacher form submit
-// const handleFormSubmit = async (data: Partial<Teacher>) => {
-//   try {
-//     if (editingTeacher) {
-//       // ✅ Update teacher via API
-//       // await updateTeacherApi(editingTeacher.id, data);
-//       toast.success('Teacher updated successfully!');
-//     } else {
-//       // ✅ Add new teacher via API
-//       await addTeacherApi(data as any);
-//       toast.success('Teacher created successfully!');
-//     }
-
-//     // await fetchTeachers(); // ✅ refresh list immediately
-//   } catch (error: any) {
-//     toast.error(error.message || 'Something went wrong!');
-//   } finally {
-//     setIsDialogOpen(false);
-//     setEditingTeacher(undefined);
-//   }
-// };
-
-const handleFormSubmit = async (data: Partial<Teacher>) => {
-  try {
-    if (editingTeacher) {
-      // later we'll create updateTeacherApi for this
-      // await updateTeacherApi(editingTeacher.id, data);
-      toast.success("Teacher updated successfully!");
-    } else {
-      await addTeacherApi({
-        teacher_id: data.teacherId!,
-        name: data.name!,
-        phone: data.phone!,
-        address: data.address || "",
-        qualification: data.qualification || "",
-        experience_years: data.experienceYears || 0,
+  const handleFormSubmit = async (data: Partial<Teacher>) => {
+    try {
+      const teacherData = {
+        teacher_id: data.teacher_id || '',
+        name: data.name || '',
+        email: data.email || '',
+        phone: data.phone || '',
+        address: data.address || '',
+        qualification: data.qualification || '',
+        experience_years: data.experience_years || 0,
         salary: data.salary || 0,
-        join_date: data.joinDate!,
-        profile_image: data.profileImage || "",
+        join_date: data.join_date || new Date().toISOString().split('T')[0],
         is_active: data.isActive ? 1 : 0,
-      });
+      };
 
-      toast.success("Teacher added successfully!");
+      if (editingTeacher) {
+        // Placeholder for update API (to be implemented)
+        toast.success('Teacher updated successfully!');
+        // await updateTeacherApi(editingTeacher.id, teacherData);
+      } else {
+        await addTeacherApi(teacherData);
+        toast.success('Teacher added successfully!');
+      }
+      await fetchTeachers(); // Refresh teachers list
+    } catch (error: any) {
+      toast.error(error.message || 'Something went wrong!');
+    } finally {
+      setIsDialogOpen(false);
+      setEditingTeacher(undefined);
     }
-
-    // await fetchTeachers(); // refresh teachers list
-  } catch (error: any) {
-    toast.error(error.message || "Something went wrong!");
-  } finally {
-    setIsDialogOpen(false);
-    setEditingTeacher(undefined);
-  }
-};
-
-
+  };
 
   return (
     <Layout title="Teachers Management">
@@ -265,7 +199,7 @@ const handleFormSubmit = async (data: Partial<Teacher>) => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {Math.round(teachers.reduce((acc, t) => acc + t.experienceYears, 0) / teachers.length)}
+                {teachers.length > 0 ? Math.round(teachers.reduce((acc, t) => acc + t.experience_years, 0) / teachers.length) : 0}
               </div>
               <p className="text-xs text-muted-foreground">Years</p>
             </CardContent>
@@ -276,7 +210,9 @@ const handleFormSubmit = async (data: Partial<Teacher>) => {
               <CardTitle className="text-sm font-medium">New This Year</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">1</div>
+              <div className="text-2xl font-bold">
+                {teachers.filter(t => new Date(t.join_date || '').getFullYear() === 2025).length}
+              </div>
               <p className="text-xs text-muted-foreground">Recent hires</p>
             </CardContent>
           </Card>
@@ -315,80 +251,83 @@ const handleFormSubmit = async (data: Partial<Teacher>) => {
             <CardTitle>Teachers List</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Teacher ID</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Qualification</TableHead>
-                    <TableHead>Experience</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Join Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredTeachers.map((teacher) => (
-                    <TableRow key={teacher.teacherId}>
-                      <TableCell className="font-medium">
-                        {teacher.teacherId}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-3">
-                          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                            <GraduationCap className="h-5 w-5 text-blue-600" />
-                          </div>
-                          <div>
-                            <p className="font-medium">{teacher.name}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>{teacher.qualification}</TableCell>
-                      <TableCell>{teacher.experienceYears} years</TableCell>
-                      <TableCell>
-                        <div>
-                          <p className="text-sm">{teacher.phone}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {teacher.joinDate && new Date(teacher.joinDate).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={teacher.isActive ? 'default' : 'secondary'}>
-                          {teacher.isActive ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="sm">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleEditTeacher(teacher)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-red-600 hover:text-red-700"
-                            onClick={() => handleDeleteTeacher(teacher)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
+            {loadingTeachers ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">Loading teachers...</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Teacher ID</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Qualification</TableHead>
+                      <TableHead>Experience</TableHead>
+                      <TableHead>Contact</TableHead>
+                      <TableHead>Join Date</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-            
-            {filteredTeachers.length === 0 && (
+                  </TableHeader>
+                  <TableBody>
+                    {filteredTeachers.map((teacher) => (
+                      <TableRow key={teacher.teacher_id}>
+                        <TableCell className="font-medium">
+                          {teacher.teacher_id}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center space-x-3">
+                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                              <GraduationCap className="h-5 w-5 text-blue-600" />
+                            </div>
+                            <div>
+                              <p className="font-medium">{teacher.name}</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{teacher.qualification || 'N/A'}</TableCell>
+                        <TableCell>{teacher.experience_years} years</TableCell>
+                        <TableCell>
+                          <p className="text-sm">{teacher.phone || 'N/A'}</p>
+                        </TableCell>
+                        <TableCell>
+                          {teacher.join_date ? new Date(teacher.join_date).toLocaleDateString() : 'N/A'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={teacher.isActive ? 'default' : 'secondary'}>
+                            {teacher.isActive ? 'Active' : 'Inactive'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button variant="ghost" size="sm">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleEditTeacher(teacher)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-red-600 hover:text-red-700"
+                              onClick={() => handleDeleteTeacher(teacher)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+            {filteredTeachers.length === 0 && !loadingTeachers && (
               <div className="text-center py-8">
                 <p className="text-muted-foreground">No teachers found matching your search.</p>
               </div>

@@ -20,15 +20,15 @@ export interface Admin {
 
 export interface Teacher {
   id: number;
-  teacherId: string;
+  teacher_id: string;
   name: string;
+  email:string;
   phone?: string;
   address?: string;
   qualification?: string;
-  experienceYears: number;
+  experience_years: number;
   salary?: number;
-  joinDate?: string;
-  profileImage?: string;
+  join_date?: string;
   isActive: boolean;
   user?: User;
 }
