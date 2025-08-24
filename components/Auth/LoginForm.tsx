@@ -53,7 +53,7 @@ export const LoginForm = () => {
           <div className="flex items-center justify-center mb-4">
             <School className="h-12 w-12 text-blue-600" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">SchoolMS</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Jaja</h1>
           <p className="text-gray-600 mt-2">School Management System</p>
         </div>
 

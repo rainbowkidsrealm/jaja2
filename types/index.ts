@@ -6,6 +6,7 @@ export interface User {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  mustChangePassword:boolean;
 }
 
 export interface Admin {
@@ -27,16 +28,13 @@ export interface Teacher {
   address?: string;
   qualification?: string;
   experience_years: number;
-  salary?: number;
-  join_date?: string;
-  isActive: boolean;
   user?: User;
 }
 
 export interface Parent {
   id: number;
   userId: number;
-  full_name: string;
+  parent_name: string;  // 🔄 renamed
   email: string;
   phone?: string;
   address?: string;
@@ -44,26 +42,27 @@ export interface Parent {
   profileImage?: string;
   user?: User;
   children?: Student[];
-}
+} 
 
 export interface Class {
   id: number;
   name: string;
   description?: string;
   isActive: boolean;
-  sections?: Section[];
-  subjects?: Subject[];
+  sections?: String;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Section {
   id: number;
   classId: number;
   name: string;
-  capacity: number;
+  capacity: number; // Maps to max_capacity from sections table
   isActive: boolean;
-  class?: Class;
-  students?: Student[];
+  enrolledStudents?: number; // Maps to enrolled_students from stored procedure
 }
+
 
 export interface Subject {
   id: number;
@@ -192,6 +191,7 @@ export interface DashboardStats {
   pendingHomework?: number;
   unreadMessages?: number;
 }
+
 
 export interface AuthState {
   user: User | null;

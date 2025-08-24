@@ -1,5 +1,7 @@
+
 // lib/api.ts
 export const API_URL = "https://jaja-render-api.onrender.com";
+
 
 // ===== Token Helpers =====
 const getToken = () => localStorage.getItem("accessToken");
@@ -119,7 +121,50 @@ export const getParentsApi = async () => {
 };
 
 
-// lib/api.ts
+
+// ✅ Update Parent
+export const updateParentApi = async (data: {
+  id: number;
+  full_name?: string;
+  email?: string;
+  phone?: string;
+  occupation?: string;
+  address?: string;
+}) => {
+  const res = await authFetch(`${API_URL}/parentsupdate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to update parent: ${errorText}`);
+  }
+
+  return res.json();
+};
+
+// ✅ Delete Parent
+export const deleteParentApi = async (id: number) => {
+  const res = await authFetch(`${API_URL}/parentsdelete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to delete parent: ${errorText}`);
+  }
+
+  return res.json();
+};
+
+
+
+
+//add teacher
 export const addTeacherApi = async (teacherData: {
   teacher_id: string;
   name: string;
@@ -127,13 +172,11 @@ export const addTeacherApi = async (teacherData: {
   phone: string;
   address: string;
   qualification: string;
-  experience_years: number;
-  salary: number;
-  join_date: string; // YYYY-MM-DD
-  is_active: number;
+  experience_years:number
 }) => {
   try {
-    const res = await authFetch(`${API_URL}/addteachers`, { // Changed to lowercase for consistency
+    console.log("Sending teacher data:", teacherData);
+    const res = await authFetch(`${API_URL}/teachers`, { // Changed to lowercase for consistency
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(teacherData),
@@ -151,6 +194,8 @@ export const addTeacherApi = async (teacherData: {
   }
 };
 
+
+// get all teacher
   export const getTeachersApi = async () => {
     const res = await authFetch(`${API_URL}/teacherlist`, {
       method: "GET",
@@ -165,3 +210,141 @@ export const addTeacherApi = async (teacherData: {
     return res.json(); // array of teachers
   };
   
+
+  //update teacher
+export const updateTeachersApi = async (data: {
+  teacher_id: string; // varchar now
+  name?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  qualification?: string;
+  experience_years?: number;
+}) => {
+  const res = await authFetch(`${API_URL}/teachersupdate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to update teacher: ${errorText}`);
+  }
+
+  return res.json();
+};
+
+
+// deleteTeacherApi
+export const deleteTeacherApi = async (teacher_id: string) => {
+  const res = await authFetch(`${API_URL}/teacherdelete`, {
+     method: "POST",
+     headers: {
+       "Content-Type": "application/json",
+     },
+     body: JSON.stringify({ teacher_id }),
+   });
+ 
+   if (!res.ok) {
+     throw new Error("Failed to delete teacher");
+   }
+ 
+   return res.json();
+ };
+
+
+ // Create Class
+export const createClassApi = async (data: {
+  name: string;
+  description?: string;
+  sections: string; // <-- comma-separated string from the form
+  isActive: boolean;
+}) => {
+  const res = await authFetch(`${API_URL}/classes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to create class: ${errorText}`);
+  }
+
+  return res.json();
+};
+
+
+// Define the Class type (adjust fields as needed to match your backend response)
+export type Class = {
+  id: number;
+  name: string;
+  description?: string;
+  sections: string;
+  isActive: boolean;
+  // Add other fields as needed
+};
+
+// Get all classes with sections and capacities
+export const getClassesApi = async (): Promise<Class[]> => {
+  const res = await authFetch(`${API_URL}/classes`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to fetch classes: ${errorText}`);
+  }
+
+  const data = await res.json();
+  console.log("Fetched classes:", JSON.stringify(data, null, 2)); // Debug to verify capacity
+  return data; // Returns array of classes with sections and capacity
+};
+
+// Get Single Class by ID
+export const getClassByIdApi = async (id: number) => {
+  const res = await authFetch(`${API_URL}/classes/${id}`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to fetch class: ${errorText}`);
+  }
+
+  return res.json();
+};
+
+// Update Class
+export const updateClassApi = async (id: number, data: { name?: string; description?: string; is_active?: boolean }) => {
+  const res = await authFetch(`${API_URL}/classes/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to update class: ${errorText}`);
+  }
+
+  return res.json();
+};
+
+// Delete Class
+export const deleteClassApi = async (id: number) => {
+  const res = await authFetch(`${API_URL}/classes/${id}`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to delete class: ${errorText}`);
+  }
+
+  return res.json();
+};

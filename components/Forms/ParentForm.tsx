@@ -32,7 +32,7 @@ export const ParentForm: React.FC<ParentFormProps> = ({ parent, onSubmit, onCanc
   useEffect(() => {
     if (parent) {
       setFormData({
-        full_name: parent.full_name || '',
+        full_name: parent.parent_name || '',
         email: parent.email || '',
         phone: parent.phone || '',
         occupation: parent.occupation || '',
@@ -137,7 +137,7 @@ export const ParentForm: React.FC<ParentFormProps> = ({ parent, onSubmit, onCanc
 
       <div className="flex justify-end gap-2 pt-4">
         <Button type="submit" disabled={loading}>
-          {loading ? 'Saving...' : 'Create Parent'}
+          {loading ? 'Saving...' : parent ? 'Update Parent' : 'Create Parent'}
         </Button>
       </div>
     </form>

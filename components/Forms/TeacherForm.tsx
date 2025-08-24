@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -19,17 +20,18 @@ export const TeacherForm: React.FC<TeacherFormProps> = ({
   onSubmit,
   onCancel,
 }) => {
-  const [formData, setFormData] = useState({
-    teacherId: teacher?.teacherId || '',
-    name: teacher?.name || '',
-    phone: teacher?.phone || '',
-    address: teacher?.address || '',
-    qualification: teacher?.qualification || '',
-    experienceYears: teacher?.experienceYears?.toString() || '',
-    // salary: teacher?.salary?.toString() || '',
-    joinDate: teacher?.joinDate || '',
-    email: '',
-  });
+const [formData, setFormData] = useState({
+  teacher_id: teacher?.teacher_id || '',
+  name: teacher?.name || '',
+  email: teacher?.email || '',
+  phone: teacher?.phone || '',
+  address: teacher?.address || '',
+  qualification: teacher?.qualification || '',
+  experienceYears: teacher?.experience_years?.toString() || '',
+});
+
+
+
 
   const [loading, setLoading] = useState(false);
 
@@ -42,9 +44,9 @@ export const TeacherForm: React.FC<TeacherFormProps> = ({
       
       onSubmit({
         ...formData,
-        experienceYears: parseInt(formData.experienceYears) || 0,
+        experience_years: parseInt(formData.experienceYears) || 0,
         // salary: parseFloat(formData.salary) || 0,
-        isActive: true,
+        // is_active: true,
       });
       
       toast.success(teacher ? 'Teacher updated successfully!' : 'Teacher created successfully!');
@@ -63,11 +65,11 @@ export const TeacherForm: React.FC<TeacherFormProps> = ({
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="teacherId">Teacher ID *</Label>
+          <Label htmlFor="teacher_id">Teacher ID *</Label>
           <Input
-            id="teacherId"
-            value={formData.teacherId}
-            onChange={(e) => handleChange('teacherId', e.target.value)}
+            id="teacher_id"
+            value={formData.teacher_id}
+            onChange={(e) => handleChange('teacher_id', e.target.value)}
             placeholder="Enter teacher ID"
             required
           />
@@ -137,7 +139,7 @@ export const TeacherForm: React.FC<TeacherFormProps> = ({
             placeholder="Enter salary"
           />
         </div> */}
-
+{/* 
         <div className="space-y-2">
           <Label htmlFor="joinDate">Join Date</Label>
           <Input
@@ -146,7 +148,7 @@ export const TeacherForm: React.FC<TeacherFormProps> = ({
             value={formData.joinDate}
             onChange={(e) => handleChange('joinDate', e.target.value)}
           />
-        </div>
+        </div> */}
       </div>
 
       <div className="space-y-2">
@@ -171,3 +173,5 @@ export const TeacherForm: React.FC<TeacherFormProps> = ({
     </form>
   );
 };
+
+

@@ -14,7 +14,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
     <div className="flex h-screen bg-gray-50">
       <Sidebar isOpen={true} onClose={() => {}} /> {/* Static default, controlled client-side */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header title={title} onMenuClick={() => {}} /> Static default
+        <Header title={title} onMenuClick={() => {}} /> {/* Static default */}
         <ClientLayout>{children}</ClientLayout>
       </div>
     </div>

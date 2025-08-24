@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -33,65 +32,45 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Plus, Search, Edit, Eye, Trash2, School, Users } from 'lucide-react';
 import { Class } from '@/types';
-import { ClassForm } from '@/components/Forms/ClassForm';
+import  ClassForm  from '@/components/Forms/ClassForm';
 import { toast } from 'sonner';
+import {
+  getClassesApi,
+  createClassApi,
+  updateClassApi,
+  deleteClassApi,
+} from '@/lib/api';
 
 export default function ClassesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingClass, setEditingClass] = useState<Class | undefined>();
   const [deleteClass, setDeleteClass] = useState<Class | undefined>();
+  const [classes, setClasses] = useState<Class[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  // Mock data - replace with actual API calls
-  const [classes, setClasses] = useState<Class[]>([
-    {
-      id: 1,
-      name: 'Grade 9',
-      description: 'Ninth grade students',
-      isActive: true,
-      sections: [
-        { id: 1, classId: 1, name: 'A', capacity: 30, isActive: true },
-        { id: 2, classId: 1, name: 'B', capacity: 30, isActive: true },
-      ]
-    },
-    {
-      id: 2,
-      name: 'Grade 10',
-      description: 'Tenth grade students',
-      isActive: true,
-      sections: [
-        { id: 3, classId: 2, name: 'A', capacity: 30, isActive: true },
-        { id: 4, classId: 2, name: 'B', capacity: 30, isActive: true },
-        { id: 5, classId: 2, name: 'C', capacity: 25, isActive: true },
-      ]
-    },
-    {
-      id: 3,
-      name: 'Grade 11',
-      description: 'Eleventh grade students',
-      isActive: true,
-      sections: [
-        { id: 6, classId: 3, name: 'Science', capacity: 35, isActive: true },
-        { id: 7, classId: 3, name: 'Commerce', capacity: 30, isActive: true },
-      ]
-    },
-    {
-      id: 4,
-      name: 'Grade 12',
-      description: 'Twelfth grade students',
-      isActive: true,
-      sections: [
-        { id: 8, classId: 4, name: 'Science', capacity: 35, isActive: true },
-        { id: 9, classId: 4, name: 'Commerce', capacity: 30, isActive: true },
-        { id: 10, classId: 4, name: 'Arts', capacity: 25, isActive: true },
-      ]
-    },
-  ]);
+  // Fetch classes from backend
+  const fetchClasses = async () => {
+    setLoading(true);
+    try {
+      const data = await getClassesApi();
+      setClasses(data);
+      if (data.length === 0) {
+        console.log('No classes returned from API');
+      } else {
+        console.log('Classes data:', JSON.stringify(data, null, 2));
+      }
+    } catch (error) {
+      console.error('Error fetching classes:', error);
+      toast.error('Failed to load classes');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const filteredClasses = classes.filter(classItem =>
-    classItem.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    classItem.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  useEffect(() => {
+    fetchClasses();
+  }, []);
 
   const handleAddClass = () => {
     setEditingClass(undefined);
@@ -107,37 +86,64 @@ export default function ClassesPage() {
     setDeleteClass(classData);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (deleteClass) {
-      setClasses(prev => prev.filter(c => c.id !== deleteClass.id));
-      toast.success('Class deleted successfully!');
-      setDeleteClass(undefined);
+      try {
+        await deleteClassApi(deleteClass.id);
+        toast.success('Class deleted successfully!');
+        fetchClasses();
+      } catch {
+        toast.error('Failed to delete class');
+      } finally {
+        setDeleteClass(undefined);
+      }
     }
   };
 
-  const handleFormSubmit = (data: Partial<Class>) => {
+const handleFormSubmit = async (data: Partial<Class>) => {
+  try {
+    // Transform sections if it's an array
+    const payload = {
+      name: data.name ?? "",
+      description: data.description ?? "",
+      sections: Array.isArray(data.sections)
+        ? data.sections.map(s => s.name).join(",")
+        : data.sections ?? "",
+      isActive: data.isActive ?? true,
+    };
+
     if (editingClass) {
-      // Update existing class
-      setClasses(prev => prev.map(c => 
-        c.id === editingClass.id 
-          ? { ...c, ...data, id: editingClass.id }
-          : c
-      ));
+      await updateClassApi(editingClass.id, payload);
+      toast.success("Class updated successfully!");
     } else {
-      // Add new class
-      const newClass: Class = {
-        id: Math.max(...classes.map(c => c.id)) + 1,
-        ...data as Class,
-        isActive: true,
-      };
-      setClasses(prev => [...prev, newClass]);
+      await createClassApi(payload);
+      toast.success("Class created successfully!");
     }
+
     setIsDialogOpen(false);
     setEditingClass(undefined);
-  };
+    fetchClasses();
+  } catch {
+    toast.error("Error saving class");
+  }
+};
+
+  const filteredClasses = classes.filter(classItem =>
+    classItem.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    classItem.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const getTotalCapacity = (classItem: Class) => {
-    return classItem.sections?.reduce((acc, section) => acc + section.capacity, 0) || 0;
+    let total = 0;
+    if (Array.isArray(classItem.sections)) {
+      total = classItem.sections.reduce((acc, section) => {
+        const capacity = section.capacity || 0;
+        console.log(`Section ${section.name} capacity: ${capacity} for class ${classItem.name}`);
+        return acc + capacity;
+      }, 0);
+    }
+    console.log(`Total capacity for ${classItem.name}: ${total}`);
+    return total;
   };
 
   const getTotalSections = (classItem: Class) => {
@@ -155,14 +161,10 @@ export default function ClassesPage() {
               Manage classes and their sections
             </p>
           </div>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button className="flex items-center gap-2" onClick={handleAddClass}>
-                <Plus className="h-4 w-4" />
-                Add Class
-              </Button>
-            </DialogTrigger>
-          </Dialog>
+          <Button className="flex items-center gap-2" onClick={handleAddClass}>
+            <Plus className="h-4 w-4" />
+            Add Class
+          </Button>
         </div>
 
         {/* Add/Edit Class Dialog */}
@@ -214,7 +216,6 @@ export default function ClassesPage() {
               <p className="text-xs text-muted-foreground">Active classes</p>
             </CardContent>
           </Card>
-          
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Sections</CardTitle>
@@ -227,7 +228,6 @@ export default function ClassesPage() {
               <p className="text-xs text-muted-foreground">Across all classes</p>
             </CardContent>
           </Card>
-          
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Capacity</CardTitle>
@@ -239,13 +239,18 @@ export default function ClassesPage() {
               <p className="text-xs text-muted-foreground">Maximum students</p>
             </CardContent>
           </Card>
-          
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Average per Section</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">30</div>
+              <div className="text-2xl font-bold">
+                {(() => {
+                  const totalCapacity = classes.reduce((acc, c) => acc + getTotalCapacity(c), 0);
+                  const totalSections = classes.reduce((acc, c) => acc + getTotalSections(c), 0);
+                  return totalSections > 0 ? Math.round(totalCapacity / totalSections) : 0;
+                })()}
+              </div>
               <p className="text-xs text-muted-foreground">Students capacity</p>
             </CardContent>
           </Card>
@@ -272,85 +277,92 @@ export default function ClassesPage() {
             <CardTitle>Classes List</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Class Name</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Sections</TableHead>
-                    <TableHead>Total Capacity</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredClasses.map((classItem) => (
-                    <TableRow key={classItem.id}>
-                      <TableCell>
-                        <div className="flex items-center space-x-3">
-                          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                            <School className="h-5 w-5 text-blue-600" />
-                          </div>
-                          <div>
-                            <p className="font-medium">{classItem.name}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>{classItem.description}</TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {classItem.sections?.map((section) => (
-                            <Badge key={section.id} variant="secondary" className="text-xs">
-                              {section.name} ({section.capacity})
-                            </Badge>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-center">
-                          <p className="font-medium">{getTotalCapacity(classItem)}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {getTotalSections(classItem)} sections
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={classItem.isActive ? 'default' : 'secondary'}>
-                          {classItem.isActive ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="sm">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleEditClass(classItem)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-red-600 hover:text-red-700"
-                            onClick={() => handleDeleteClass(classItem)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-            
-            {filteredClasses.length === 0 && (
+            {loading ? (
+              <p>Loading...</p>
+            ) : filteredClasses.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-muted-foreground">No classes found matching your search.</p>
+                <p className="text-muted-foreground">No classes found.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Class Name</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Sections</TableHead>
+                      <TableHead>Total Capacity</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredClasses.map((classItem) => (
+                      <TableRow key={classItem.id}>
+                        <TableCell>
+                          <div className="flex items-center space-x-3">
+                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                              <School className="h-5 w-5 text-blue-600" />
+                            </div>
+                            <div>
+                              <p className="font-medium">{classItem.name}</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{classItem.description }</TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {Array.isArray(classItem.sections) && classItem.sections.length ? (
+                              classItem.sections.map((section) => (
+                                <Badge key={section.id} variant="secondary" className="text-xs">
+                                  {section.name} ({section.capacity})
+                                </Badge>
+                              ))
+                            ) : (
+                              <Badge variant="secondary" className="text-xs">No sections</Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-center">
+                            <p className="font-medium">{getTotalCapacity(classItem)}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {getTotalSections(classItem)} sections
+                              {getTotalSections(classItem) === 0 && ' (No sections)'}
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={classItem.isActive ? 'default' : 'secondary'}>
+                            {classItem.isActive ? 'Active' : 'Inactive'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            {/* <Button variant="ghost" size="sm">
+                              <Eye className="h-4 w-4" />
+                            </Button> */}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditClass(classItem)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600 hover:text-red-700"
+                              onClick={() => handleDeleteClass(classItem)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             )}
           </CardContent>

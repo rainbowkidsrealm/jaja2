@@ -19,8 +19,7 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  DialogTitle
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import {
@@ -31,14 +30,16 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  createParentApi,
+  deleteParentApi,
+  getParentsApi,
+  updateParentApi
+} from '@/lib/api';
 import { Parent } from '@/types';
-import { Edit, Eye, Plus, Search, Trash2, Users } from 'lucide-react';
+import { Edit, Plus, Search, Trash2, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import {
-  getParentsApi,
-  createParentApi,
-} from '@/lib/api';
 
 export default function ParentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -68,12 +69,17 @@ export default function ParentsPage() {
   }, []);
 
   // Filter parents by search term
+  const term = (searchTerm || "").toLowerCase();
+
   const filteredParents = parents.filter(
     (p) =>
-      p.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.occupation?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.email.toLowerCase().includes(searchTerm.toLowerCase())
+      (p.parent_name || "").toLowerCase().includes(term) ||
+      (p.occupation || "").toLowerCase().includes(term) ||
+      (p.email || "").toLowerCase().includes(term)
   );
+
+  
+
 
   const handleAddParent = () => {
     setEditingParent(undefined);
@@ -93,7 +99,7 @@ export default function ParentsPage() {
     if (!deleteParent) return;
 
     try {
-      //await deleteParentApi(deleteParent.id);
+      await deleteParentApi(deleteParent.id);
       setParents((prev) => prev.filter((p) => p.id !== deleteParent.id));
       toast.success('Parent deleted successfully!');
     } catch (error: any) {
@@ -107,24 +113,23 @@ export default function ParentsPage() {
   const handleFormSubmit = async (data: Partial<Parent>) => {
     try {
       if (editingParent) {
-        // Update parent
-        // await updateParentApi(editingParent.id, data);
-        toast.success('Parent updated successfully!');
+        // ✅ Update existing parent
+        await updateParentApi({ id: editingParent.id, ...data });
+        toast.success("Parent updated successfully!");
       } else {
-        // Create new parent
-        await createParentApi(data as any); // ✅ pass correct type
-        toast.success('Parent created successfully!');
+        // ✅ Create new parent
+        await createParentApi(data as any);
+        toast.success("Parent created successfully!");
       }
 
-      await fetchParents(); // ✅ refresh list immediately
+      await fetchParents(); // refresh list
     } catch (error: any) {
-      toast.error(error.message || 'Something went wrong!');
+      toast.error(error.message || "Something went wrong!");
     } finally {
       setIsDialogOpen(false);
       setEditingParent(undefined);
     }
   };
-
   return (
     <Layout title="Parents Management">
       <div className="space-y-6">
@@ -150,6 +155,13 @@ export default function ParentsPage() {
                 {editingParent ? 'Edit Parent' : 'Add New Parent'}
               </DialogTitle>
             </DialogHeader>
+
+            {editingParent && (
+              <p className="text-sm text-gray-500">
+                Editing Parent ID: {editingParent.id}
+              </p>
+            )}
+
             <ParentForm
               parent={editingParent}
               onSubmit={handleFormSubmit}
@@ -161,6 +173,7 @@ export default function ParentsPage() {
           </DialogContent>
         </Dialog>
 
+
         {/* Delete Confirmation Dialog */}
         <AlertDialog
           open={!!deleteParent}
@@ -170,7 +183,7 @@ export default function ParentsPage() {
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Parent</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete {deleteParent?.full_name}? This
+                Are you sure you want to delete {deleteParent?.parent_name}? This
                 action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
@@ -278,7 +291,7 @@ export default function ParentsPage() {
                             <Users className="h-5 w-5 text-purple-600" />
                           </div>
                           <div>
-                            <p className="font-medium">{parent.full_name}</p>
+                            <p className="font-medium">{parent.parent_name}</p>
                           </div>
                         </div>
                       </TableCell>
@@ -290,26 +303,27 @@ export default function ParentsPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="space-y-1">
+                        <div className="flex flex-wrap gap-2">
                           {parent.children?.map((child) => (
                             <Badge
                               key={child.id}
                               variant="secondary"
-                              className="text-xs"
+                              className="text-xs px-2 py-1"
                             >
-                              {child.name}
+                              {child.name} {/* Correct property */}
                             </Badge>
                           ))}
                         </div>
+
                       </TableCell>
                       <TableCell>
                         <p className="text-sm max-w-xs truncate">{parent.address}</p>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="sm">
+                          {/* <Button variant="ghost" size="sm">
                             <Eye className="h-4 w-4" />
-                          </Button>
+                          </Button> */}
                           <Button
                             variant="ghost"
                             size="sm"
