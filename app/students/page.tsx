@@ -207,8 +207,8 @@ export default function StudentsPage() {
                 setIsDialogOpen(false);
                 setEditingStudent(undefined);
               }}
-              classes={classes}
-              sections={sections}
+              // classes={classes}
+              // sections={sections}
             />
           </DialogContent>
         </Dialog>
@@ -362,7 +362,7 @@ export default function StudentsPage() {
                       </TableCell>
                       <TableCell>{student.class?.name}</TableCell>
                       <TableCell>{student.section?.name}</TableCell>
-                      <TableCell>{student.parent?.full_name}</TableCell>
+                      {/* <TableCell>{student.parent?.full_name}</TableCell> */}
                       <TableCell>
                         <Badge className={getGenderColor(student.gender)}>
                           {student.gender 

@@ -49,7 +49,7 @@ export interface Class {
   name: string;
   description?: string;
   isActive: boolean;
-  sections?: String;
+  sections?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -122,6 +122,25 @@ export interface Attendance {
   section?: Section;
 }
 
+// export interface Homework {
+//   id: number;
+//   title: string;
+//   description?: string;
+//   classId: number;
+//   sectionId: number;
+//   subjectId: number;
+//   assignedDate: string;
+//   dueDate: string;
+//   assignedBy: number;
+//   isActive: boolean;
+//   class?: Class;
+//   section?: Section;
+//   subject?: Subject;
+//   teacher?: Teacher;
+//   submissions?: HomeworkSubmission[];
+// }
+
+
 export interface Homework {
   id: number;
   title: string;
@@ -133,11 +152,11 @@ export interface Homework {
   dueDate: string;
   assignedBy: number;
   isActive: boolean;
-  class?: Class;
-  section?: Section;
-  subject?: Subject;
-  teacher?: Teacher;
-  submissions?: HomeworkSubmission[];
+  class: { id: number; name: string; isActive: boolean };
+  section: { id: number; classId: number; name: string; capacity: number; isActive: boolean };
+  subject: { id: number; name: string; code: string; isActive: boolean };
+  teacher: Teacher;
+  submissions: HomeworkSubmission[];
 }
 
 export interface HomeworkSubmission {

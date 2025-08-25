@@ -72,7 +72,7 @@ export default function SettingsPage() {
             <Label htmlFor="name">Full Name</Label>
             <Input 
               id="name" 
-              defaultValue={profile?.name}
+              // defaultValue={profile?.name}
               placeholder="Enter your full name"
             />
           </div>

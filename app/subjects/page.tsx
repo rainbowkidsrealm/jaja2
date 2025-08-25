@@ -141,7 +141,7 @@ export default function SubjectsPage() {
     } else {
       // Add new subject
       const newSubject: Subject = {
-       id: Math.max(...students.map(s => s.id), 0) + 1,
+      //  id: Math.max(...students.map(s => s.id), 0) + 1,
         ...data as Subject,
         isActive: true,
       };

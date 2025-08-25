@@ -32,7 +32,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Plus, Search, Edit, Eye, Trash2, School, Users } from 'lucide-react';
 import { Class } from '@/types';
-import  ClassForm  from '@/components/Forms/ClassForm';
+import { ClassForm } from '@/components/Forms/ClassForm';
 import { toast } from 'sonner';
 import {
   getClassesApi,
@@ -100,33 +100,33 @@ export default function ClassesPage() {
     }
   };
 
-const handleFormSubmit = async (data: Partial<Class>) => {
-  try {
-    // Transform sections if it's an array
-    const payload = {
-      name: data.name ?? "",
-      description: data.description ?? "",
-      sections: Array.isArray(data.sections)
-        ? data.sections.map(s => s.name).join(",")
-        : data.sections ?? "",
-      isActive: data.isActive ?? true,
-    };
+  const handleFormSubmit = async (data: Partial<Class>) => {
+    try {
+      // Transform sections to ensure it's a string
+      const payload = {
+        name: data.name ?? "",
+        description: data.description ?? "",
+        sections: Array.isArray(data.sections)
+          ? data.sections.map(s => s.name).join(",")
+          : (data.sections ?? "").toString(), // Ensure it's a primitive string
+        isActive: data.isActive ?? true,
+      };
 
-    if (editingClass) {
-      await updateClassApi(editingClass.id, payload);
-      toast.success("Class updated successfully!");
-    } else {
-      await createClassApi(payload);
-      toast.success("Class created successfully!");
+      if (editingClass) {
+        await updateClassApi(editingClass.id, payload);
+        toast.success("Class updated successfully!");
+      } else {
+        await createClassApi(payload);
+        toast.success("Class created successfully!");
+      }
+
+      setIsDialogOpen(false);
+      setEditingClass(undefined);
+      fetchClasses();
+    } catch {
+      toast.error("Error saving class");
     }
-
-    setIsDialogOpen(false);
-    setEditingClass(undefined);
-    fetchClasses();
-  } catch {
-    toast.error("Error saving class");
-  }
-};
+  };
 
   const filteredClasses = classes.filter(classItem =>
     classItem.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -278,7 +278,9 @@ const handleFormSubmit = async (data: Partial<Class>) => {
           </CardHeader>
           <CardContent>
             {loading ? (
-              <p>Loading...</p>
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">Loading...</p>
+              </div>
             ) : filteredClasses.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-muted-foreground">No classes found.</p>
@@ -291,8 +293,8 @@ const handleFormSubmit = async (data: Partial<Class>) => {
                       <TableHead>Class Name</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead>Sections</TableHead>
-                      <TableHead>Total Capacity</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead className="text-center">Total Capacity</TableHead>
+                      {/* <TableHead>Status</TableHead> */}
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -309,7 +311,7 @@ const handleFormSubmit = async (data: Partial<Class>) => {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>{classItem.description }</TableCell>
+                        <TableCell>{classItem.description}</TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
                             {Array.isArray(classItem.sections) && classItem.sections.length ? (
@@ -332,16 +334,14 @@ const handleFormSubmit = async (data: Partial<Class>) => {
                             </p>
                           </div>
                         </TableCell>
-                        <TableCell>
+                        {/* <TableCell>
                           <Badge variant={classItem.isActive ? 'default' : 'secondary'}>
                             {classItem.isActive ? 'Active' : 'Inactive'}
                           </Badge>
-                        </TableCell>
+                        </TableCell> */}
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
-                            {/* <Button variant="ghost" size="sm">
-                              <Eye className="h-4 w-4" />
-                            </Button> */}
+                            
                             <Button
                               variant="ghost"
                               size="sm"

@@ -1,8 +1,7 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   Users,
@@ -15,7 +14,6 @@ import {
   UserCog,
   School,
   FileText,
-  Bell,
   BarChart3,
   X,
 } from 'lucide-react';
@@ -113,10 +111,16 @@ const navItems: NavItem[] = [
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const pathname = usePathname();
   const { user } = useAuth();
+  const router = useRouter();
 
   const filteredNavItems = navItems.filter(item => 
     user?.role && item.roles.includes(user.role)
   );
+
+  const handleNavigation = (href: string) => {
+    router.push(href);
+    onClose(); // Close sidebar after navigation
+  };
 
   const getRoleColor = () => {
     switch (user?.role) {
@@ -136,7 +140,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       {/* Mobile overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
           onClick={onClose}
         />
       )}
@@ -144,16 +148,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed left-0 top-0 z-50 h-full w-64 bg-white border-r transform transition-transform duration-200 ease-in-out md:relative md:translate-x-0',
+          'fixed left-0 top-0 z-50 h-full w-64 bg-white border-r shadow-lg transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 md:shadow-none',
           isOpen ? 'translate-x-0' : '-translate-x-full',
           getRoleColor()
         )}
       >
-        <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex items-center justify-between p-4 border-b bg-white">
           <div className="flex items-center space-x-2">
             <School className="h-8 w-8 text-primary" />
             <div>
-              <h2 className="font-bold text-lg">Jaja</h2>
+              <h2 className="font-bold text-lg">SchoolMS</h2>
               <p className="text-xs text-muted-foreground">Management System</p>
             </div>
           </div>
@@ -161,13 +165,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             variant="ghost"
             size="sm"
             onClick={onClose}
-            className="md:hidden"
+            className="md:hidden hover:bg-gray-100"
           >
             <X className="h-4 w-4" />
           </Button>
         </div>
 
-        <nav className="p-4">
+        <nav className="p-4 bg-white h-full overflow-y-auto">
           <ul className="space-y-2">
             {filteredNavItems.map((item) => {
               const isActive = pathname === item.href;
@@ -175,19 +179,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
               return (
                 <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    onClick={onClose} // Close sidebar on link click in mobile
+                  <button
+                    onClick={() => handleNavigation(item.href)}
                     className={cn(
-                      'flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                      'w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105',
                       isActive
                         ? 'bg-primary text-primary-foreground'
-                        : 'text-gray-600 hover:bg-gray-100'
+                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                     )}
                   >
                     <Icon className="h-5 w-5" />
                     <span>{item.label}</span>
-                  </Link>
+                  </button>
                 </li>
               );
             })}

@@ -34,7 +34,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
     sectionId: student?.sectionId?.toString() || '',
     parentId: student?.parentId?.toString() || '',
     dateOfBirth: student?.dateOfBirth || '',
-    gender: student?.gender || '',
+    gender: student?.gender || undefined, // Default to undefined if not provided
     address: student?.address || '',
     phone: student?.phone || '',
     email: student?.email || '',
@@ -57,6 +57,8 @@ export const StudentForm: React.FC<StudentFormProps> = ({
         sectionId: parseInt(formData.sectionId) || undefined,
         parentId: parseInt(formData.parentId) || undefined,
         isActive: true,
+        // Explicitly cast gender to the union type
+        gender: formData.gender as 'male' | 'female' | 'other' | undefined,
       });
       
       toast.success(student ? 'Student updated successfully!' : 'Student created successfully!');
@@ -68,7 +70,13 @@ export const StudentForm: React.FC<StudentFormProps> = ({
   };
 
   const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      // Special handling for gender to enforce union type
+      if (field === 'gender') {
+        return { ...prev, [field]: value as 'male' | 'female' | 'other' | undefined };
+      }
+      return { ...prev, [field]: value };
+    });
   };
 
   const selectedClass = mockClasses.find(c => c.id.toString() === formData.classId);
@@ -127,13 +135,13 @@ export const StudentForm: React.FC<StudentFormProps> = ({
             <SelectTrigger>
               <SelectValue placeholder="Select section" />
             </SelectTrigger>
-            <SelectContent>
+            {/* <SelectContent>
               {selectedClass?.sections?.map(section => (
                 <SelectItem key={section.id} value={section.id.toString()}>
                   {section.name}
                 </SelectItem>
               ))}
-            </SelectContent>
+            </SelectContent> */}
           </Select>
         </div>
 
@@ -146,7 +154,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
             <SelectContent>
               {mockParents.map(parent => (
                 <SelectItem key={parent.id} value={parent.id.toString()}>
-                  {parent.name}
+                  {/* {parent.name} */}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -155,7 +163,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
 
         <div className="space-y-2">
           <Label htmlFor="gender">Gender</Label>
-          <Select value={formData.gender} onValueChange={(value) => handleChange('gender', value)}>
+          <Select value={formData.gender || ''} onValueChange={(value) => handleChange('gender', value)}>
             <SelectTrigger>
               <SelectValue placeholder="Select gender" />
             </SelectTrigger>

@@ -46,6 +46,7 @@ export default function MarksPage() {
       student: { id: 1, studentId: 'STU001', name: 'Alice Johnson', isActive: true },
       subject: { id: 1, name: 'Mathematics', code: 'MATH', isActive: true },
       class: { id: 1, name: 'Grade 9', isActive: true },
+      createdBy:2
     },
     {
       id: 2,
@@ -59,6 +60,7 @@ export default function MarksPage() {
       student: { id: 1, studentId: 'STU001', name: 'Alice Johnson', isActive: true },
       subject: { id: 2, name: 'Physics', code: 'PHY', isActive: true },
       class: { id: 1, name: 'Grade 9', isActive: true },
+      createdBy:2
     },
     {
       id: 3,
@@ -72,6 +74,7 @@ export default function MarksPage() {
       student: { id: 2, studentId: 'STU002', name: 'Bob Smith', isActive: true },
       subject: { id: 1, name: 'Mathematics', code: 'MATH', isActive: true },
       class: { id: 1, name: 'Grade 9', isActive: true },
+      createdBy:2
     },
   ];
 

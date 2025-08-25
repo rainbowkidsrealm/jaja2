@@ -3,9 +3,36 @@ import { User, Admin, Teacher, Parent, Student, Class, Subject, Mark, Attendance
 
 // Mock Users
 export const mockUsers: User[] = [
-  { id: 1, email: 'admin@school.com', role: 'admin', isActive: true, createdAt: '2024-01-01', updatedAt: '2024-01-01' },
-  { id: 2, email: 'teacher@school.com', role: 'teacher', isActive: true, createdAt: '2024-01-01', updatedAt: '2024-01-01' },
-  { id: 3, email: 'parent@school.com', role: 'parent', isActive: true, createdAt: '2024-01-01', updatedAt: '2024-01-01' },
+  { 
+    id: 1, 
+    email: 'admin@school.com', 
+    name: 'Admin User', 
+    role: 'admin', 
+    isActive: true, 
+    createdAt: '2024-01-01', 
+    updatedAt: '2024-01-01',
+    mustChangePassword: false,
+  },
+  { 
+    id: 2, 
+    email: 'teacher@school.com', 
+    name: 'Teacher User', 
+    role: 'teacher', 
+    isActive: true, 
+    createdAt: '2024-01-01', 
+    updatedAt: '2024-01-01',
+    mustChangePassword: false,
+  },
+  { 
+    id: 3, 
+    email: 'parent@school.com', 
+    name: 'Parent User', 
+    role: 'parent', 
+    isActive: true, 
+    createdAt: '2024-01-01', 
+    updatedAt: '2024-01-01',
+    mustChangePassword: false,
+  },
 ];
 
 // Mock Classes
@@ -15,20 +42,14 @@ export const mockClasses: Class[] = [
     name: 'Grade 9',
     description: 'Ninth grade students',
     isActive: true,
-    sections: [
-      { id: 1, classId: 1, name: 'A', capacity: 30, isActive: true },
-      { id: 2, classId: 1, name: 'B', capacity: 30, isActive: true },
-    ]
+    sections: 'A,B', // Changed from array to comma-separated string
   },
   {
     id: 2,
     name: 'Grade 10',
     description: 'Tenth grade students',
     isActive: true,
-    sections: [
-      { id: 3, classId: 2, name: 'A', capacity: 30, isActive: true },
-      { id: 4, classId: 2, name: 'B', capacity: 30, isActive: true },
-    ]
+    sections: 'A,B', // Changed from array to comma-separated string
   },
 ];
 
@@ -44,27 +65,23 @@ export const mockSubjects: Subject[] = [
 export const mockTeachers: Teacher[] = [
   {
     id: 1,
-    userId: 2,
-    teacherId: 'T001',
+    teacher_id: 'T001',
     name: 'Jane Smith',
+    email: 'jane.smith@school.com',
     phone: '+1234567890',
     qualification: 'M.Sc Mathematics',
-    experienceYears: 5,
-    salary: 50000,
-    joinDate: '2019-08-15',
-    isActive: true,
+    experience_years: 5, // Matches index.ts (experience_years)
+    // isActive: true,
   },
   {
     id: 2,
-    userId: 4,
-    teacherId: 'T002',
+    teacher_id: 'T002',
     name: 'John Doe',
+    email: 'john.doe@school.com',
     phone: '+1234567891',
     qualification: 'M.A English',
-    experienceYears: 8,
-    salary: 55000,
-    joinDate: '2016-07-01',
-    isActive: true,
+    experience_years: 8, // Matches index.ts (experience_years)
+    // isActive: true,
   },
 ];
 
@@ -73,7 +90,8 @@ export const mockParents: Parent[] = [
   {
     id: 1,
     userId: 3,
-    name: 'Robert Johnson',
+    parent_name: 'Robert Johnson', // Changed from name to parent_name
+    email: 'robert.johnson@school.com',
     phone: '+1234567890',
     occupation: 'Software Engineer',
     address: '123 Main St, City',
@@ -81,7 +99,8 @@ export const mockParents: Parent[] = [
   {
     id: 2,
     userId: 5,
-    name: 'Mary Smith',
+    parent_name: 'Mary Smith', // Changed from name to parent_name
+    email: 'mary.smith@school.com',
     phone: '+1234567891',
     occupation: 'Doctor',
     address: '456 Oak Ave, City',
@@ -105,7 +124,7 @@ export const mockStudents: Student[] = [
     admissionDate: '2023-08-01',
     isActive: true,
     class: mockClasses[0],
-    section: mockClasses[0].sections?.[0],
+    section: undefined, // sections is a string now, so section is not applicable
     parent: mockParents[0],
   },
   {
@@ -123,7 +142,7 @@ export const mockStudents: Student[] = [
     admissionDate: '2023-08-01',
     isActive: true,
     class: mockClasses[0],
-    section: mockClasses[0].sections?.[1],
+    section: undefined, // sections is a string now, so section is not applicable
     parent: mockParents[1],
   },
 ];
@@ -158,7 +177,7 @@ export const mockAttendance: Attendance[] = [
     markedBy: 1,
     student: mockStudents[0],
     class: mockClasses[0],
-    section: mockClasses[0].sections?.[0],
+    section: undefined, // sections is a string now, so section is not applicable
   },
 ];
 
@@ -175,10 +194,11 @@ export const mockHomework: Homework[] = [
     dueDate: '2024-01-22',
     assignedBy: 1,
     isActive: true,
-    class: mockClasses[0],
-    section: mockClasses[0].sections?.[0],
-    subject: mockSubjects[0],
+    class: { id: 1, name: 'Grade 9', isActive: true },
+    section: { id: 1, classId: 1, name: 'A', capacity: 30, isActive: true },
+    subject: { id: 1, name: 'Mathematics', code: 'MATH', isActive: true },
     teacher: mockTeachers[0],
+    submissions: [],
   },
 ];
 

@@ -81,12 +81,12 @@ const getMockProfile = (user: User): Admin | Teacher | Parent => {
       return {
         id: 1,
         userId: user.id,
-        teacherId: 'T001',
+        teacher_id: 'T001',
         name: 'Jane Teacher',
         phone: '+1234567891',
         qualification: 'M.Ed',
-        experienceYears: 5,
-        isActive: true,
+        experience_years: 5,
+        // isActive: true,
       };
     case 'parent':
       return {

@@ -2,12 +2,12 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DivideIcon as LucideIcon } from 'lucide-react';
+import { DivideIcon } from 'lucide-react'; // Note: Removed 'LucideIcon' as a type import
 
 interface StatsCardProps {
   title: string;
   value: string | number;
-  icon: LucideIcon;
+  icon: React.ComponentType<any>; // Changed from LucideIcon to React.ComponentType<any>
   color: 'blue' | 'green' | 'purple' | 'orange' | 'red';
   change?: string;
   changeType?: 'positive' | 'negative';
@@ -24,7 +24,7 @@ const colorClasses = {
 export const StatsCard: React.FC<StatsCardProps> = ({
   title,
   value,
-  icon: Icon,
+  icon: Icon, // Destructure as a component
   color,
   change,
   changeType,

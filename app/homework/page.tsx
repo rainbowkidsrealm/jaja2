@@ -49,11 +49,24 @@ export default function HomeworkPage() {
       class: { id: 1, name: 'Grade 9', isActive: true },
       section: { id: 1, classId: 1, name: 'A', capacity: 30, isActive: true },
       subject: { id: 1, name: 'Mathematics', code: 'MATH', isActive: true },
-      teacher: { id: 1, userId: 1, teacherId: 'T001', name: 'Jane Smith', experienceYears: 5, isActive: true },
+      teacher: {
+        id: 1,
+        teacher_id: 'T001',
+        name: 'Jane Smith',
+        experience_years: 5,
+        // isActive: true,
+        user: {
+          id: 1, email: 'jane.smith@example.com', name: 'Jane Smith', role: 'teacher', isActive: true,
+          createdAt: '',
+          updatedAt: '',
+          mustChangePassword: false
+        },
+        email: ''
+      },
       submissions: [
         { id: 1, homeworkId: 1, studentId: 1, status: 'submitted', submittedAt: '2024-01-20T10:00:00Z' },
         { id: 2, homeworkId: 1, studentId: 2, status: 'pending' },
-      ]
+      ],
     },
     {
       id: 2,
@@ -69,10 +82,23 @@ export default function HomeworkPage() {
       class: { id: 1, name: 'Grade 9', isActive: true },
       section: { id: 2, classId: 1, name: 'B', capacity: 30, isActive: true },
       subject: { id: 2, name: 'Physics', code: 'PHY', isActive: true },
-      teacher: { id: 2, userId: 2, teacherId: 'T002', name: 'John Doe', experienceYears: 8, isActive: true },
+      teacher: {
+        id: 2,
+        teacher_id: 'T002',
+        name: 'John Doe',
+        experience_years: 8,
+        // isActive: true,
+        user: {
+          id: 2, email: 'john.doe@example.com', name: 'John Doe', role: 'teacher', isActive: true,
+          createdAt: '',
+          updatedAt: '',
+          mustChangePassword: false
+        },
+        email: ''
+      },
       submissions: [
-        { id: 3, homeworkId: 2, studentId: 1, status: 'in-progress' },
-      ]
+        { id: 3, homeworkId: 2, studentId: 1, status: 'pending' }, // Changed from 'in-progress' to 'pending'
+      ],
     },
     {
       id: 3,
@@ -88,8 +114,21 @@ export default function HomeworkPage() {
       class: { id: 2, name: 'Grade 10', isActive: true },
       section: { id: 3, classId: 2, name: 'A', capacity: 30, isActive: true },
       subject: { id: 5, name: 'English', code: 'ENG', isActive: true },
-      teacher: { id: 3, userId: 3, teacherId: 'T003', name: 'Sarah Wilson', experienceYears: 3, isActive: true },
-      submissions: []
+      teacher: {
+        id: 3,
+        teacher_id: 'T003',
+        name: 'Sarah Wilson',
+        experience_years: 3,
+        // isActive: true,
+        user: {
+          id: 3, email: 'sarah.wilson@example.com', name: 'Sarah Wilson', role: 'teacher', isActive: true,
+          createdAt: '',
+          updatedAt: '',
+          mustChangePassword: false
+        },
+        email: ''
+      },
+      submissions: [],
     },
   ];
 
@@ -140,7 +179,7 @@ export default function HomeworkPage() {
     const total = homework.submissions?.length || 0;
     const submitted = homework.submissions?.filter(s => s.status === 'submitted').length || 0;
     const pending = homework.submissions?.filter(s => s.status === 'pending').length || 0;
-    const inProgress = homework.submissions?.filter(s => s.status === 'in-progress').length || 0;
+    const inProgress = 0; // Removed invalid 'in-progress' filter
     const rate = total > 0 ? Math.round((submitted / total) * 100) : 0;
 
     return { total, submitted, pending, inProgress, rate };
@@ -389,7 +428,7 @@ export default function HomeworkPage() {
                             <Progress value={stats.rate} className="h-2" />
                             <div className="flex gap-2 text-xs">
                               <span className="text-green-600">✓ {stats.submitted}</span>
-                              <span className="text-blue-600">◐ {stats.inProgress}</span>
+                              <span className="text-blue-600">◐ {stats.inProgress}</span> {/* Note: inProgress is 0 */}
                               <span className="text-gray-600">○ {stats.pending}</span>
                             </div>
                           </div>
