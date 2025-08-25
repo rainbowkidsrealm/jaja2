@@ -92,6 +92,7 @@ export interface Student {
   parent?: Parent;
 }
 
+
 export interface Mark {
   id: number;
   studentId: number;

@@ -1,14 +1,14 @@
 'use client';
 
 import React from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 import {
   LayoutDashboard,
   Users,
   GraduationCap,
   BookOpen,
   Clock,
-  ClipboardCheck,
   Calendar,
   MessageSquare,
   Settings,
@@ -16,6 +16,7 @@ import {
   School,
   FileText,
   BarChart3,
+  ClipboardCheck,
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -118,16 +119,10 @@ const navItems: NavItem[] = [
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const pathname = usePathname();
   const { user } = useAuth();
-  const router = useRouter();
 
   const filteredNavItems = navItems.filter(item => 
     user?.role && item.roles.includes(user.role)
   );
-
-  const handleNavigation = (href: string) => {
-    router.push(href);
-    onClose(); // Close sidebar after navigation
-  };
 
   const getRoleColor = () => {
     switch (user?.role) {
@@ -186,8 +181,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
               return (
                 <li key={item.href}>
-                  <button
-                    onClick={() => handleNavigation(item.href)}
+                  <Link
+                    href={item.href}
+                    onClick={onClose}
                     className={cn(
                       'w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105',
                       isActive
@@ -197,7 +193,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                   >
                     <Icon className="h-5 w-5" />
                     <span>{item.label}</span>
-                  </button>
+                  </Link>
                 </li>
               );
             })}

@@ -24,16 +24,19 @@ import {
 import { Calendar, Search, Edit, Eye, Plus, UserCheck, UserX, Clock } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Attendance } from '@/types';
+import { AttendanceForm } from '@/components/Forms/AttendanceForm';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 export default function AttendancePage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedClass, setSelectedClass] = useState('all');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { user } = useAuth();
 
   // Mock data - replace with actual API calls
-  const attendanceRecords: Attendance[] = [
+  const [attendanceRecords, setAttendanceRecords] = useState<Attendance[]>([
     {
       id: 1,
       studentId: 1,
@@ -70,7 +73,7 @@ export default function AttendancePage() {
       class: { id: 2, name: 'Grade 10', isActive: true },
       section: { id: 3, classId: 2, name: 'A', capacity: 30, isActive: true },
     },
-  ];
+  ]);
 
   const filteredAttendance = attendanceRecords.filter(record => {
     const matchesSearch = record.student?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -117,6 +120,17 @@ export default function AttendancePage() {
   };
 
   const stats = getAttendanceStats();
+  const handleAddAttendance = () => {
+    setIsDialogOpen(true);
+  };
+
+  const handleFormSubmit = (data: Attendance[]) => {
+    // Add new attendance records
+    setAttendanceRecords(prev => [...prev, ...data]);
+    setIsDialogOpen(false);
+    toast.success(`Attendance marked for ${data.length} students!`);
+  };
+
   const isTeacher = user?.role === 'teacher';
   const isParent = user?.role === 'parent';
 
@@ -141,24 +155,27 @@ export default function AttendancePage() {
           {isTeacher && (
             <Dialog>
               <DialogTrigger asChild>
-                <Button className="flex items-center gap-2">
+                <Button className="flex items-center gap-2" onClick={handleAddAttendance}>
                   <Plus className="h-4 w-4" />
                   Mark Attendance
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>Mark Class Attendance</DialogTitle>
-                </DialogHeader>
-                <div className="p-4">
-                  <p className="text-muted-foreground">
-                    Bulk attendance marking interface would be implemented here with student list and status options.
-                  </p>
-                </div>
-              </DialogContent>
             </Dialog>
           )}
         </div>
+
+        {/* Add Attendance Dialog */}
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Mark Class Attendance</DialogTitle>
+            </DialogHeader>
+            <AttendanceForm
+              onSubmit={handleFormSubmit}
+              onCancel={() => setIsDialogOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
