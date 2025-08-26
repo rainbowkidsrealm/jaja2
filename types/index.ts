@@ -70,6 +70,10 @@ export interface Subject {
   code?: string;
   description?: string;
   isActive: boolean;
+  teacherId?: number;   // foreign key to teacher
+  teacherName?: string; // populated if you join with teacher table
+  teacherEmail?: string;
+  classId: number;
 }
 
 export interface Student {

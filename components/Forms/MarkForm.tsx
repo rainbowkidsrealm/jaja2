@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-
 import {
   Select,
   SelectContent,
@@ -32,7 +31,7 @@ export const MarkForm: React.FC<MarkFormProps> = ({
     studentId: mark?.studentId?.toString() || '',
     subjectId: mark?.subjectId?.toString() || '',
     classId: mark?.classId?.toString() || '',
-    examType: mark?.examType || undefined,
+    examType: mark?.examType || '',
     marksObtained: mark?.marksObtained?.toString() || '',
     totalMarks: mark?.totalMarks?.toString() || '',
     examDate: mark?.examDate || '',
@@ -46,12 +45,14 @@ export const MarkForm: React.FC<MarkFormProps> = ({
     setLoading(true);
 
     try {
+      // Validate required fields
       if (!formData.studentId || !formData.subjectId || !formData.examType || 
           !formData.marksObtained || !formData.totalMarks) {
         toast.error('Please fill in all required fields');
         return;
       }
 
+      // Validate marks
       const obtained = parseFloat(formData.marksObtained);
       const total = parseFloat(formData.totalMarks);
       
@@ -61,18 +62,19 @@ export const MarkForm: React.FC<MarkFormProps> = ({
       }
 
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
       onSubmit({
+        ...formData,
         studentId: parseInt(formData.studentId),
         subjectId: parseInt(formData.subjectId),
         classId: parseInt(formData.classId),
-        examType: formData.examType,
         marksObtained: obtained,
         totalMarks: total,
-        createdBy: 1,
-        examDate: formData.examDate || undefined,
-        remarks: formData.remarks || undefined,
+        createdBy: 1, // Current teacher ID
+        examType: formData.examType as 'quiz' | 'assignment' | 'midterm' | 'final' | 'project',
+        examDate: formData.examDate,
+        remarks: formData.remarks,
       });
+      
       
       toast.success(mark ? 'Marks updated successfully!' : 'Marks added successfully!');
     } catch (error) {
@@ -83,16 +85,7 @@ export const MarkForm: React.FC<MarkFormProps> = ({
   };
 
   const handleChange = (field: string, value: string) => {
-    setFormData(prev => {
-      if (field === 'examType') {
-        const validTypes = ['quiz', 'assignment', 'midterm', 'final', 'project'] as const;
-        if (validTypes.includes(value as any)) {
-          return { ...prev, [field]: value as 'quiz' | 'assignment' | 'midterm' | 'final' | 'project' };
-        }
-        return prev;
-      }
-      return { ...prev, [field]: value };
-    });
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const selectedClass = mockClasses.find(c => c.id.toString() === formData.classId);
@@ -107,7 +100,7 @@ export const MarkForm: React.FC<MarkFormProps> = ({
           <Label htmlFor="class">Class *</Label>
           <Select value={formData.classId} onValueChange={(value) => {
             handleChange('classId', value);
-            handleChange('studentId', '');
+            handleChange('studentId', ''); // Reset student when class changes
           }}>
             <SelectTrigger>
               <SelectValue placeholder="Select class" />
@@ -121,6 +114,7 @@ export const MarkForm: React.FC<MarkFormProps> = ({
             </SelectContent>
           </Select>
         </div>
+
         <div className="space-y-2">
           <Label htmlFor="student">Student *</Label>
           <Select 
@@ -140,6 +134,7 @@ export const MarkForm: React.FC<MarkFormProps> = ({
             </SelectContent>
           </Select>
         </div>
+
         <div className="space-y-2">
           <Label htmlFor="subject">Subject *</Label>
           <Select value={formData.subjectId} onValueChange={(value) => handleChange('subjectId', value)}>
@@ -155,9 +150,10 @@ export const MarkForm: React.FC<MarkFormProps> = ({
             </SelectContent>
           </Select>
         </div>
+
         <div className="space-y-2">
           <Label htmlFor="examType">Exam Type *</Label>
-          <Select value={formData.examType || ''} onValueChange={(value) => handleChange('examType', value)}>
+          <Select value={formData.examType} onValueChange={(value) => handleChange('examType', value)}>
             <SelectTrigger>
               <SelectValue placeholder="Select exam type" />
             </SelectTrigger>
@@ -170,6 +166,7 @@ export const MarkForm: React.FC<MarkFormProps> = ({
             </SelectContent>
           </Select>
         </div>
+
         <div className="space-y-2">
           <Label htmlFor="marksObtained">Marks Obtained *</Label>
           <Input
@@ -183,6 +180,7 @@ export const MarkForm: React.FC<MarkFormProps> = ({
             required
           />
         </div>
+
         <div className="space-y-2">
           <Label htmlFor="totalMarks">Total Marks *</Label>
           <Input
@@ -196,6 +194,7 @@ export const MarkForm: React.FC<MarkFormProps> = ({
             required
           />
         </div>
+
         <div className="space-y-2">
           <Label htmlFor="examDate">Exam Date</Label>
           <Input
@@ -206,6 +205,7 @@ export const MarkForm: React.FC<MarkFormProps> = ({
           />
         </div>
       </div>
+
       <div className="space-y-2">
         <Label htmlFor="remarks">Remarks</Label>
         <Textarea
@@ -216,6 +216,7 @@ export const MarkForm: React.FC<MarkFormProps> = ({
           rows={3}
         />
       </div>
+
       <div className="flex justify-end gap-2 pt-4">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel

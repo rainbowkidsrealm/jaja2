@@ -348,3 +348,79 @@ export const deleteClassApi = async (id: number) => {
 
   return res.json();
 };
+
+
+
+// Create Subject
+export const createSubjectApi = async (subject: {
+  name: string;
+  description?: string;
+  classId: number;
+  teacherId: number;
+}) => {
+  const res = await authFetch(`${API_URL}/createsubjects`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(subject),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to create subject: ${errorText}`);
+  }
+
+  return res.json();
+};
+
+// Get All Subjects
+export const getSubjectsApi = async () => {
+  const response = await authFetch(`${API_URL}/subjects`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to fetch subjects: ${errorText}`);
+  }
+
+  return response.json();
+};
+// Update Subject
+export const updateSubjectApi = async (
+  id: number,
+  subject: {
+    name: string;
+    description?: string;
+    classId: number;
+    teacherId: number;
+  }
+) => {
+  const res = await authFetch(`${API_URL}/updatesubjects/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(subject),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to update subject: ${errorText}`);
+  }
+
+  return res.json();
+};
+
+// Delete Subject
+export const deleteSubjectApi = async (id: number) => {
+  const res = await authFetch(`${API_URL}/deletesubjects/${id}`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to delete subject: ${errorText}`);
+  }
+
+  return res.json();
+};

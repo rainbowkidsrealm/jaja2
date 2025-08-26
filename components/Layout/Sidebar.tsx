@@ -77,42 +77,42 @@ const navItems: NavItem[] = [
     label: 'Marks',
     roles: ['teacher', 'parent'],
   },
-  {
-    href: '/attendance',
-    icon: Calendar,
-    label: 'Attendance',
-    roles: ['teacher', 'parent'],
-  },
+  // {
+  //   href: '/attendance',
+  //   icon: Calendar,
+  //   label: 'Attendance',
+  //   roles: ['teacher', 'parent'],
+  // },
   {
     href: '/entry-exit',
     icon: Clock,
     label: 'Entry/Exit',
     roles: ['teacher'],
   },
-  {
-    href: '/homework',
-    icon: FileText,
-    label: 'Homework',
-    roles: ['teacher', 'parent'],
-  },
+  // {
+  //   href: '/homework',
+  //   icon: FileText,
+  //   label: 'Homework',
+  //   roles: ['teacher', 'parent'],
+  // },
   {
     href: '/messages',
     icon: MessageSquare,
     label: 'Messages',
     roles: ['teacher', 'parent'],
   },
-  {
-    href: '/reports',
-    icon: ClipboardCheck,
-    label: 'Reports',
-    roles: ['admin', 'teacher'],
-  },
-  {
-    href: '/settings',
-    icon: Settings,
-    label: 'Settings',
-    roles: ['admin', 'teacher', 'parent'],
-  },
+  // {
+  //   href: '/reports',
+  //   icon: ClipboardCheck,
+  //   label: 'Reports',
+  //   roles: ['admin', 'teacher'],
+  // },
+  // {
+  //   href: '/settings',
+  //   icon: Settings,
+  //   label: 'Settings',
+  //   roles: ['admin', 'teacher', 'parent'],
+  // },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {

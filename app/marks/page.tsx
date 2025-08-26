@@ -1,273 +1,411 @@
 'use client';
 
 import React, { useState } from 'react';
+import { Layout } from '@/components/Layout/Layout';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Plus, Search, Edit, Eye, BarChart3, TrendingUp, TrendingDown } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 import { Mark } from '@/types';
+import { MarkForm } from '@/components/Forms/MarkForm';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { mockStudents, mockSubjects, mockClasses } from '@/lib/mockData';
 
-// ---- Form types (local to this file; no exports) ----
-interface MarkFormProps {
-  mark?: Mark;
-  onSubmit: (data: Partial<Mark>) => void;
-  onCancel: () => void;
-}
+export default function MarksPage() {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedClass, setSelectedClass] = useState('all');
+  const [selectedSubject, setSelectedSubject] = useState('all');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingMark, setEditingMark] = useState<Mark | undefined>();
+  const { user } = useAuth();
 
-// ---- DO NOT export this component ----
-const MarkForm: React.FC<MarkFormProps> = ({
-  mark,
-  onSubmit,
-  onCancel,
-}) => {
-  const [formData, setFormData] = useState({
-    studentId: mark?.studentId?.toString() || '',
-    subjectId: mark?.subjectId?.toString() || '',
-    classId: mark?.classId?.toString() || '',
-    examType: mark?.examType || undefined,
-    marksObtained: mark?.marksObtained?.toString() || '',
-    totalMarks: mark?.totalMarks?.toString() || '',
-    examDate: mark?.examDate || '',
-    remarks: mark?.remarks || '',
+  // Mock data - replace with actual API calls
+// Mock data - replace with actual API calls
+const [marks, setMarks] = useState<Mark[]>([
+  {
+    id: 1,
+    studentId: 1,
+    subjectId: 1,
+    classId: 1,
+    examType: 'midterm',
+    marksObtained: 85,
+    totalMarks: 100,
+    examDate: '2024-01-15',
+    createdBy: 1, // required
+    student: { id: 1, studentId: 'STU001', name: 'Alice Johnson', isActive: true },
+    subject: { id: 1, name: 'Mathematics', code: 'MATH', isActive: true, classId: 1 },
+    class: { id: 1, name: 'Grade 9', isActive: true },
+  },
+  {
+    id: 2,
+    studentId: 1,
+    subjectId: 2,
+    classId: 1,
+    examType: 'quiz',
+    marksObtained: 18,
+    totalMarks: 20,
+    examDate: '2024-01-10',
+    createdBy: 1, // required
+    student: { id: 1, studentId: 'STU001', name: 'Alice Johnson', isActive: true },
+    subject: { id: 2, name: 'Physics', code: 'PHY', isActive: true, classId: 1 },
+    class: { id: 1, name: 'Grade 9', isActive: true },
+  },
+  {
+    id: 3,
+    studentId: 2,
+    subjectId: 1,
+    classId: 1,
+    examType: 'assignment',
+    marksObtained: 28,
+    totalMarks: 30,
+    examDate: '2024-01-12',
+    createdBy: 2, // required
+    student: { id: 2, studentId: 'STU002', name: 'Bob Smith', isActive: true },
+    subject: { id: 1, name: 'Mathematics', code: 'MATH', isActive: true, classId: 1 },
+    class: { id: 1, name: 'Grade 9', isActive: true },
+  },
+]);
+
+
+  const filteredMarks = marks.filter(mark => {
+    const matchesSearch = mark.student?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         mark.subject?.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesClass = selectedClass === 'all' || mark.class?.name === selectedClass;
+    const matchesSubject = selectedSubject === 'all' || mark.subject?.name === selectedSubject;
+    return matchesSearch && matchesClass && matchesSubject;
   });
 
-  const [loading, setLoading] = useState(false);
+  const getPercentage = (obtained: number, total: number) => {
+    return Math.round((obtained / total) * 100);
+  };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  const getGrade = (percentage: number) => {
+    if (percentage >= 90) return 'A+';
+    if (percentage >= 80) return 'A';
+    if (percentage >= 70) return 'B';
+    if (percentage >= 60) return 'C';
+    if (percentage >= 50) return 'D';
+    return 'F';
+  };
 
-    try {
-      if (
-        !formData.studentId ||
-        !formData.subjectId ||
-        !formData.examType ||
-        !formData.marksObtained ||
-        !formData.totalMarks
-      ) {
-        toast.error('Please fill in all required fields');
-        return;
-      }
+  const handleAddMark = () => {
+    setEditingMark(undefined);
+    setIsDialogOpen(true);
+  };
 
-      const obtained = parseFloat(formData.marksObtained);
-      const total = parseFloat(formData.totalMarks);
+  const handleEditMark = (mark: Mark) => {
+    setEditingMark(mark);
+    setIsDialogOpen(true);
+  };
 
-      if (obtained > total) {
-        toast.error('Marks obtained cannot be greater than total marks');
-        return;
-      }
+  const handleFormSubmit = (data: Partial<Mark>) => {
+    if (editingMark) {
+      // Update existing mark
+      setMarks(prev => prev.map(m => 
+        m.id === editingMark.id 
+          ? { ...m, ...data, id: editingMark.id }
+          : m
+      ));
+    } else {
+      // Add new mark
+      const newMark: Mark = {
+        // id: Math.max(...marks.map(m => m.id)) + 1,
+        ...data as Mark,
+        student: marks.find(m => m.studentId === data.studentId)?.student,
+        subject: marks.find(m => m.subjectId === data.subjectId)?.subject,
+        class: marks.find(m => m.classId === data.classId)?.class,
+      };
+      setMarks(prev => [...prev, newMark]);
+    }
+    setIsDialogOpen(false);
+    setEditingMark(undefined);
+  };
 
-      // simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 300));
-
-      onSubmit({
-        studentId: parseInt(formData.studentId),
-        subjectId: parseInt(formData.subjectId),
-        classId: parseInt(formData.classId),
-        examType: formData.examType,
-        marksObtained: obtained,
-        totalMarks: total,
-        createdBy: 1,
-        examDate: formData.examDate || undefined,
-        remarks: formData.remarks || undefined,
-      });
-
-      toast.success(mark ? 'Marks updated successfully!' : 'Marks added successfully!');
-    } catch {
-      toast.error('Something went wrong!');
-    } finally {
-      setLoading(false);
+  const getGradeColor = (grade: string) => {
+    switch (grade) {
+      case 'A+': return 'text-green-600 bg-green-50';
+      case 'A': return 'text-green-600 bg-green-50';
+      case 'B': return 'text-blue-600 bg-blue-50';
+      case 'C': return 'text-yellow-600 bg-yellow-50';
+      case 'D': return 'text-orange-600 bg-orange-50';
+      case 'F': return 'text-red-600 bg-red-50';
+      default: return 'text-gray-600 bg-gray-50';
     }
   };
 
-  const handleChange = (field: string, value: string) => {
-    setFormData((prev) => {
-      if (field === 'examType') {
-        const validTypes = ['quiz', 'assignment', 'midterm', 'final', 'project'] as const;
-        if (validTypes.includes(value as any)) {
-          return {
-            ...prev,
-            [field]: value as 'quiz' | 'assignment' | 'midterm' | 'final' | 'project',
-          };
-        }
-        return prev;
-      }
-      return { ...prev, [field]: value };
-    });
+  const getExamTypeColor = (type: string) => {
+    switch (type) {
+      case 'quiz': return 'bg-blue-100 text-blue-800';
+      case 'assignment': return 'bg-green-100 text-green-800';
+      case 'midterm': return 'bg-purple-100 text-purple-800';
+      case 'final': return 'bg-red-100 text-red-800';
+      case 'project': return 'bg-orange-100 text-orange-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
   };
 
-  const filteredStudents = mockStudents.filter(
-    (s) => !formData.classId || s.classId?.toString() === formData.classId
-  );
+  const isTeacher = user?.role === 'teacher';
+  const isParent = user?.role === 'parent';
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="class">Class *</Label>
-          <Select
-            value={formData.classId}
-            onValueChange={(value) => {
-              handleChange('classId', value);
-              handleChange('studentId', '');
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select class" />
-            </SelectTrigger>
-            <SelectContent>
-              {mockClasses.map((cls) => (
-                <SelectItem key={cls.id} value={cls.id.toString()}>
-                  {cls.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+    <Layout title="Marks Management">
+      <div className="space-y-6">
+        {/* Header Section */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold">
+              {isTeacher ? 'Marks Management' : isParent ? 'Student Marks' : 'Marks Overview'}
+            </h2>
+            <p className="text-muted-foreground">
+              {isTeacher 
+                ? 'Add and manage student marks and grades'
+                : isParent 
+                  ? 'View your child\'s academic performance'
+                  : 'Monitor academic performance across all students'
+              }
+            </p>
+          </div>
+          {isTeacher && (
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button className="flex items-center gap-2" onClick={handleAddMark}>
+                  <Plus className="h-4 w-4" />
+                  Add Marks
+                </Button>
+              </DialogTrigger>
+            </Dialog>
+          )}
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="student">Student *</Label>
-          <Select
-            value={formData.studentId}
-            onValueChange={(value) => handleChange('studentId', value)}
-            disabled={!formData.classId}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select student" />
-            </SelectTrigger>
-            <SelectContent>
-              {filteredStudents.map((student) => (
-                <SelectItem key={student.id} value={student.id.toString()}>
-                  {student.name} ({student.studentId})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {/* Add/Edit Mark Dialog */}
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {editingMark ? 'Edit Marks' : 'Add New Marks'}
+              </DialogTitle>
+            </DialogHeader>
+            <MarkForm
+              mark={editingMark}
+              onSubmit={handleFormSubmit}
+              onCancel={() => {
+                setIsDialogOpen(false);
+                setEditingMark(undefined);
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Marks Entries</CardTitle>
+              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{marks.length}</div>
+              <p className="text-xs text-muted-foreground">All assessments</p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Average Score</CardTitle>
+              <TrendingUp className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {Math.round(marks.reduce((acc, mark) => acc + getPercentage(mark.marksObtained, mark.totalMarks), 0) / marks.length)}%
+              </div>
+              <p className="text-xs text-green-600">Above average</p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">A+ Grades</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {marks.filter(mark => getPercentage(mark.marksObtained, mark.totalMarks) >= 90).length}
+              </div>
+              <p className="text-xs text-muted-foreground">Excellent performance</p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Below Average</CardTitle>
+              <TrendingDown className="h-4 w-4 text-red-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {marks.filter(mark => getPercentage(mark.marksObtained, mark.totalMarks) < 60).length}
+              </div>
+              <p className="text-xs text-red-600">Need attention</p>
+            </CardContent>
+          </Card>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="subject">Subject *</Label>
-          <Select
-            value={formData.subjectId}
-            onValueChange={(value) => handleChange('subjectId', value)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select subject" />
-            </SelectTrigger>
-            <SelectContent>
-              {mockSubjects.map((subject) => (
-                <SelectItem key={subject.id} value={subject.id.toString()}>
-                  {subject.name} ({subject.code})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {/* Filters and Search */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex flex-col lg:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by student or subject..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <select
+                value={selectedClass}
+                onChange={(e) => setSelectedClass(e.target.value)}
+                className="px-3 py-2 border border-border rounded-md bg-background"
+              >
+                <option value="all">All Classes</option>
+                <option value="Grade 9">Grade 9</option>
+                <option value="Grade 10">Grade 10</option>
+                <option value="Grade 11">Grade 11</option>
+                <option value="Grade 12">Grade 12</option>
+              </select>
+              <select
+                value={selectedSubject}
+                onChange={(e) => setSelectedSubject(e.target.value)}
+                className="px-3 py-2 border border-border rounded-md bg-background"
+              >
+                <option value="all">All Subjects</option>
+                <option value="Mathematics">Mathematics</option>
+                <option value="Physics">Physics</option>
+                <option value="Chemistry">Chemistry</option>
+                <option value="Biology">Biology</option>
+                <option value="English">English</option>
+              </select>
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className="space-y-2">
-          <Label htmlFor="examType">Exam Type *</Label>
-          <Select
-            value={formData.examType || ''}
-            onValueChange={(value) => handleChange('examType', value)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select exam type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="quiz">Quiz</SelectItem>
-              <SelectItem value="assignment">Assignment</SelectItem>
-              <SelectItem value="midterm">Midterm</SelectItem>
-              <SelectItem value="final">Final</SelectItem>
-              <SelectItem value="project">Project</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="marksObtained">Marks Obtained *</Label>
-          <Input
-            id="marksObtained"
-            type="number"
-            min="0"
-            step="0.5"
-            value={formData.marksObtained}
-            onChange={(e) => handleChange('marksObtained', e.target.value)}
-            placeholder="Enter marks obtained"
-            required
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="totalMarks">Total Marks *</Label>
-          <Input
-            id="totalMarks"
-            type="number"
-            min="1"
-            step="0.5"
-            value={formData.totalMarks}
-            onChange={(e) => handleChange('totalMarks', e.target.value)}
-            placeholder="Enter total marks"
-            required
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="examDate">Exam Date</Label>
-          <Input
-            id="examDate"
-            type="date"
-            value={formData.examDate}
-            onChange={(e) => handleChange('examDate', e.target.value)}
-          />
-        </div>
+        {/* Marks Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Marks Records</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Student</TableHead>
+                    <TableHead>Subject</TableHead>
+                    <TableHead>Class</TableHead>
+                    <TableHead>Exam Type</TableHead>
+                    <TableHead>Marks</TableHead>
+                    <TableHead>Percentage</TableHead>
+                    <TableHead>Grade</TableHead>
+                    <TableHead>Date</TableHead>
+                    {isTeacher && <TableHead className="text-right">Actions</TableHead>}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredMarks.map((mark) => {
+                    const percentage = getPercentage(mark.marksObtained, mark.totalMarks);
+                    const grade = getGrade(percentage);
+                    
+                    return (
+                      <TableRow key={mark.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{mark.student?.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {mark.student?.studentId}
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{mark.subject?.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {mark.subject?.code}
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell>{mark.class?.name}</TableCell>
+                        <TableCell>
+                          <Badge className={getExamTypeColor(mark.examType)}>
+                            {mark.examType.charAt(0).toUpperCase() + mark.examType.slice(1)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <p className="font-medium">
+                              {mark.marksObtained}/{mark.totalMarks}
+                            </p>
+                            <Progress value={percentage} className="h-2" />
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="font-medium">{percentage}%</span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={getGradeColor(grade)}>
+                            {grade}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {mark.examDate && new Date(mark.examDate).toLocaleDateString()}
+                        </TableCell>
+                        {isTeacher && (
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Button variant="ghost" size="sm">
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => handleEditMark(mark)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+            
+            {filteredMarks.length === 0 && (
+              <div className="text-center py-8">
+                <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">No marks records found matching your criteria.</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="remarks">Remarks</Label>
-        <Textarea
-          id="remarks"
-          value={formData.remarks}
-          onChange={(e) => handleChange('remarks', e.target.value)}
-          placeholder="Enter any remarks or comments"
-          rows={3}
-        />
-      </div>
-
-      <div className="flex justify-end gap-2 pt-4">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button type="submit" disabled={loading}>
-          {loading ? 'Saving...' : mark ? 'Update Marks' : 'Add Marks'}
-        </Button>
-      </div>
-    </form>
-  );
-};
-
-// ---- The ONLY export from this file ----
-export default function MarksPage() {
-  const handleSubmit = (data: Partial<Mark>) => {
-    console.log('Submitted Marks:', data);
-  };
-
-  const handleCancel = () => {
-    console.log('Cancelled');
-  };
-
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Add / Update Marks</h1>
-      <MarkForm onSubmit={handleSubmit} onCancel={handleCancel} />
-    </div>
+    </Layout>
   );
 }

@@ -55,10 +55,10 @@ export const mockClasses: Class[] = [
 
 // Mock Subjects
 export const mockSubjects: Subject[] = [
-  { id: 1, name: 'Mathematics', code: 'MATH', description: 'Advanced mathematics', isActive: true },
-  { id: 2, name: 'Physics', code: 'PHY', description: 'Physics concepts', isActive: true },
-  { id: 3, name: 'Chemistry', code: 'CHEM', description: 'Chemistry fundamentals', isActive: true },
-  { id: 4, name: 'English', code: 'ENG', description: 'English language', isActive: true },
+  { id: 1, name: 'Mathematics', code: 'MATH', description: 'Advanced mathematics', isActive: true ,teacherId:12,teacherName:'demo',teacherEmail:'demo@gmail.com',classId:2},
+  { id: 2, name: 'Physics', code: 'PHY', description: 'Physics concepts', isActive: true, teacherId:12,teacherName:'demo',teacherEmail:'demo@gmail.com',classId:2 },
+  { id: 3, name: 'Chemistry', code: 'CHEM', description: 'Chemistry fundamentals', isActive: true ,teacherId:12,teacherName:'demo',teacherEmail:'demo@gmail.com',classId:2},
+  { id: 4, name: 'English', code: 'ENG', description: 'English language', isActive: true ,teacherId:12,teacherName:'demo',teacherEmail:'demo@gmail.com',classId:2},
 ];
 
 // Mock Teachers
@@ -134,7 +134,7 @@ export const mockStudents: Student[] = [
     studentId: 'STU002',
     name: 'Bob Smith',
     classId: 1,
-    sectionId: 2,
+    sectionId: 1,
     parentId: 2,
     dateOfBirth: '2008-03-20',
     gender: 'male',
