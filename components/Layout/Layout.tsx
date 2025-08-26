@@ -11,20 +11,18 @@ interface LayoutProps {
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
-  const [sidebarOpen, setSidebarOpen] = useState<boolean | null>(null); // null until we know
+  const [sidebarOpen, setSidebarOpen] = useState<boolean | null>(null);
   const { isAuthenticated, loading } = useAuth();
 
-  // Load sidebar state only on client
   useEffect(() => {
     const saved = localStorage.getItem('sidebarOpen');
     if (saved !== null) {
       setSidebarOpen(JSON.parse(saved));
     } else {
-      setSidebarOpen(window.innerWidth >= 768); // default: open on desktop
+      setSidebarOpen(window.innerWidth >= 768);
     }
   }, []);
 
-  // Save sidebar state when it changes
   useEffect(() => {
     if (sidebarOpen !== null) {
       localStorage.setItem('sidebarOpen', JSON.stringify(sidebarOpen));
@@ -33,7 +31,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
 
   const closeSidebar = () => setSidebarOpen(false);
 
-  // Avoid rendering layout until sidebar state is known
   if (sidebarOpen === null || loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50">
@@ -47,14 +44,24 @@ export const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header onMenuClick={() => setSidebarOpen(true)} title={title} />
-        <main
-          className="flex-1 overflow-auto p-4"
-          onClick={sidebarOpen ? closeSidebar : undefined}
-        >
+    <div className="h-screen flex bg-gray-50">
+      {/* Sidebar - fixed */}
+      <div className="fixed top-0 left-0 h-full z-20">
+        <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
+      </div>
+
+      {/* Right section */}
+      <div className="flex-1 flex flex-col ml-64"> 
+        {/* 👆 ml-64 = width of sidebar (adjust if sidebar width differs) */}
+
+        {/* Header - fixed */}
+        <div className="fixed top-0 left-64 right-0 z-10">
+          <Header onMenuClick={() => setSidebarOpen(true)} title={title} />
+        </div>
+
+        {/* Scrollable content */}
+        <main className="mt-16 p-4 overflow-y-auto h-[calc(100vh-4rem)]">
+          {/* 👆 4rem = height of header, adjust if different */}
           {children}
         </main>
       </div>
