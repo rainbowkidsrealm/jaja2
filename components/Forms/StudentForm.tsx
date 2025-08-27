@@ -1,10 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -12,9 +10,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { getclassesforstudents, getParentsApi, getSectionsApi } from "@/lib/api";
 import { Student } from '@/types';
+import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { mockClasses, mockParents } from '@/lib/mockData';
+
 
 interface StudentFormProps {
   student?: Student;
@@ -29,12 +30,12 @@ export const StudentForm: React.FC<StudentFormProps> = ({
 }) => {
   const [formData, setFormData] = useState({
     studentId: student?.studentId || '',
-    name: student?.name || '',
+    fullName: student?.name || '',
     classId: student?.classId?.toString() || '',
     sectionId: student?.sectionId?.toString() || '',
     parentId: student?.parentId?.toString() || '',
     dateOfBirth: student?.dateOfBirth || '',
-    gender: student?.gender || undefined, // Default to undefined if not provided
+    gender: student?.gender || '',
     address: student?.address || '',
     phone: student?.phone || '',
     email: student?.email || '',
@@ -43,47 +44,65 @@ export const StudentForm: React.FC<StudentFormProps> = ({
 
   const [loading, setLoading] = useState(false);
 
+  // 🔹 hooks for API
+
+  const [classes, setClasses] = useState<any[]>([]);
+  const [parents, setParents] = useState<any[]>([]);
+  const [sections, setSections] = useState<any[]>([]);
+
+  useEffect(() => {
+    getclassesforstudents().then(setClasses).catch((err) => console.error(err));
+    getParentsApi().then(setParents).catch((err) => console.error(err));
+    getSectionsApi().then(setSections).catch((err) => console.error(err));
+  }, []);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      onSubmit({
-        ...formData,
-        classId: parseInt(formData.classId) || undefined,
-        sectionId: parseInt(formData.sectionId) || undefined,
-        parentId: parseInt(formData.parentId) || undefined,
-        isActive: true,
-        // Explicitly cast gender to the union type
-        gender: formData.gender as 'male' | 'female' | 'other' | undefined,
-      });
-      
-      toast.success(student ? 'Student updated successfully!' : 'Student created successfully!');
-    } catch (error) {
-      toast.error('Something went wrong!');
+      const payload: Partial<Student> = {
+        studentId: formData.studentId,
+        name: formData.fullName,
+        classId: formData.classId ? parseInt(formData.classId) : undefined,
+        sectionId: formData.sectionId ? parseInt(formData.sectionId) : undefined,
+        parentId: formData.parentId ? parseInt(formData.parentId) : undefined,
+        gender: formData.gender
+          ? (formData.gender.charAt(0).toUpperCase() + formData.gender.slice(1)) as Student["gender"]
+          : undefined,
+        dateOfBirth: formData.dateOfBirth || undefined,
+        admissionDate: formData.admissionDate || undefined,
+        phone: formData.phone || undefined,
+        email: formData.email || undefined,
+        address: formData.address || undefined,
+      };
+
+      // 👉 don't swallow errors here
+      await onSubmit(payload);
+
+      // ✅ only toast success if no error was thrown
+      toast.success(student ? "Student updated successfully!" : "Student created successfully!");
+    } catch (error: any) {
+      // 👉 handle only UI-level validation here
+      if (error?.response?.status === 409 || error?.message?.includes("Duplicate entry")) {
+        toast.error("This Student ID already exists. Please choose another.");
+      } else {
+        toast.error("Something went wrong!");
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChange = (field: string, value: string) => {
-    setFormData(prev => {
-      // Special handling for gender to enforce union type
-      if (field === 'gender') {
-        return { ...prev, [field]: value as 'male' | 'female' | 'other' | undefined };
-      }
-      return { ...prev, [field]: value };
-    });
-  };
 
-  const selectedClass = mockClasses.find(c => c.id.toString() === formData.classId);
+  const handleChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Student ID */}
+        {/* Student ID */}
         <div className="space-y-2">
           <Label htmlFor="studentId">Student ID *</Label>
           <Input
@@ -92,31 +111,39 @@ export const StudentForm: React.FC<StudentFormProps> = ({
             onChange={(e) => handleChange('studentId', e.target.value)}
             placeholder="Enter student ID"
             required
+            readOnly={!!student}   // 👈 read-only if editing
+            className={student ? "bg-gray-100 cursor-not-allowed" : ""}
           />
         </div>
 
+
+        {/* Full Name */}
         <div className="space-y-2">
-          <Label htmlFor="name">Full Name *</Label>
+          <Label htmlFor="fullName">Full Name *</Label>
           <Input
-            id="name"
-            value={formData.name}
-            onChange={(e) => handleChange('name', e.target.value)}
+            id="fullName"
+            value={formData.fullName}
+            onChange={(e) => handleChange('fullName', e.target.value)}
             placeholder="Enter full name"
             required
           />
         </div>
 
+        {/* Class */}
         <div className="space-y-2">
           <Label htmlFor="class">Class *</Label>
-          <Select value={formData.classId} onValueChange={(value) => {
-            handleChange('classId', value);
-            handleChange('sectionId', ''); // Reset section when class changes
-          }}>
+          <Select
+            value={formData.classId}
+            onValueChange={(value) => {
+              handleChange('classId', value);
+              handleChange('sectionId', ''); // reset section
+            }}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Select class" />
             </SelectTrigger>
             <SelectContent>
-              {mockClasses.map(cls => (
+              {classes.map(cls => (
                 <SelectItem key={cls.id} value={cls.id.toString()}>
                   {cls.name}
                 </SelectItem>
@@ -125,45 +152,56 @@ export const StudentForm: React.FC<StudentFormProps> = ({
           </Select>
         </div>
 
+        {/* Section */}
         <div className="space-y-2">
           <Label htmlFor="section">Section *</Label>
-          <Select 
-            value={formData.sectionId} 
+          <Select
+            value={formData.sectionId}
             onValueChange={(value) => handleChange('sectionId', value)}
             disabled={!formData.classId}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select section" />
             </SelectTrigger>
-            {/* <SelectContent>
-              {selectedClass?.sections?.map(section => (
-                <SelectItem key={section.id} value={section.id.toString()}>
-                  {section.name}
-                </SelectItem>
-              ))}
-            </SelectContent> */}
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="parent">Parent *</Label>
-          <Select value={formData.parentId} onValueChange={(value) => handleChange('parentId', value)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select parent" />
-            </SelectTrigger>
             <SelectContent>
-              {mockParents.map(parent => (
-                <SelectItem key={parent.id} value={parent.id.toString()}>
-                  {/* {parent.name} */}
-                </SelectItem>
-              ))}
+              {sections
+                .filter(section => section.classId?.toString() === formData.classId)
+                .map(section => (
+                  <SelectItem key={section.id} value={section.id.toString()}>
+                    {section.name}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
         </div>
 
+        {/* Parent */}
+        <div className="space-y-2">
+          <Label htmlFor="parent">Parent *</Label>
+          <Select
+            value={formData.parentId}
+            onValueChange={(value) => handleChange('parentId', value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select parent" />
+            </SelectTrigger>
+            <SelectContent>
+              {parents.map(p => (
+                <SelectItem key={p.id} value={p.id.toString()}>
+                  {p.parent_name}
+                </SelectItem>
+              ))} {/* Assuming parent_name is the field for parent's name */}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Gender */}
         <div className="space-y-2">
           <Label htmlFor="gender">Gender</Label>
-          <Select value={formData.gender || ''} onValueChange={(value) => handleChange('gender', value)}>
+          <Select
+            value={formData.gender}
+            onValueChange={(value) => handleChange('gender', value)}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Select gender" />
             </SelectTrigger>
@@ -175,6 +213,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
           </Select>
         </div>
 
+        {/* DOB */}
         <div className="space-y-2">
           <Label htmlFor="dateOfBirth">Date of Birth</Label>
           <Input
@@ -185,6 +224,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
           />
         </div>
 
+        {/* Admission Date */}
         <div className="space-y-2">
           <Label htmlFor="admissionDate">Admission Date</Label>
           <Input
@@ -195,6 +235,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
           />
         </div>
 
+        {/* Phone */}
         <div className="space-y-2">
           <Label htmlFor="phone">Phone</Label>
           <Input
@@ -205,6 +246,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
           />
         </div>
 
+        {/* Email */}
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
           <Input
@@ -217,6 +259,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
         </div>
       </div>
 
+      {/* Address */}
       <div className="space-y-2">
         <Label htmlFor="address">Address</Label>
         <Textarea

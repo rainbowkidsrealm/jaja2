@@ -78,23 +78,24 @@ export interface Subject {
 
 export interface Student {
   id: number;
-  studentId: string;
-  name: string;
-  classId?: number;
-  sectionId?: number;
-  parentId?: number;
-  dateOfBirth?: string;
-  gender?: 'male' | 'female' | 'other';
+  studentId: string;          // maps to student_id
+  name: string;           // maps to full_name
+  classId?: number;           // maps to class_id
+  sectionId?: number;         // maps to section_id
+  parentId?: number;          // maps to parent_id
+  dateOfBirth?: string;       // maps to dob
+  gender?: 'Male' | 'Female' | 'Other'; // match ENUM
   address?: string;
   phone?: string;
   email?: string;
-  admissionDate?: string;
-  profileImage?: string;
-  isActive: boolean;
+  admissionDate?: string;     // maps to admission_date
+  profileImage?: string;      // not in DB yet
+  isActive?: boolean;         // only keep if you add to DB
   class?: Class;
   section?: Section;
   parent?: Parent;
 }
+
 
 
 export interface Mark {

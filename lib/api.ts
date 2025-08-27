@@ -424,3 +424,99 @@ export const deleteSubjectApi = async (id: number) => {
 
   return res.json();
 };
+
+
+// ===== Student APIs =====
+export const createStudentApi = async (payload: any) => {
+  const res = await authFetch(`${API_URL}/students`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload), // send what StudentForm already built
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to create student: ${errorText}`);
+  }
+
+  return res.json();
+};
+
+
+// ===== Student APIs =====
+export const getStudentsApi = async () => {
+  const res = await authFetch(`${API_URL}/students`, {
+    method: "GET",
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to fetch students: ${errorText}`);
+  }
+
+  return res.json(); // { count, data }
+};
+
+// ===== Update Student API =====
+export const updateStudentApi = async (student: any) => {
+  const res = await authFetch(`${API_URL}/updateStudent`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(student), // student object should include `id`
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to update student: ${errorText}`);
+  }
+
+  return res.json(); // { message: "Student updated successfully" }
+};
+
+// ===== Deactivate Student API =====
+export const deactivateStudentApi = async (id: number) => {
+  const res = await authFetch(`${API_URL}/deactivateStudent`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },  // 👈 ensure this
+    body: JSON.stringify({ id }),                     // 👈 wrapped object
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to deactivate student: ${errorText}`);
+  }
+
+  return res.json();
+};
+
+// 🔹 Get all classes
+export const getclassesforstudents = async () => {
+  const res = await authFetch(`${API_URL}/getclassesforstudents`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to fetch classes: ${errorText}`);
+  }
+
+  return res.json(); // returns array of classes
+};
+
+// 🔹 Get all sections
+export const getSectionsApi = async () => {
+  const res = await authFetch(`${API_URL}/getsectionsforstudents`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to fetch sections: ${errorText}`);
+  }
+
+  return res.json(); // returns array of sections
+};

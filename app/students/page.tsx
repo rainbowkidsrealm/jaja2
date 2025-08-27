@@ -1,25 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { StudentForm } from '@/components/Forms/StudentForm';
 import { Layout } from '@/components/Layout/Layout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { useEffect, useMemo, useState } from 'react';
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,150 +14,171 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Search, Edit, Eye, Trash2, GraduationCap, Users } from 'lucide-react';
-import { Student } from '@/types';
-import { StudentForm } from '@/components/Forms/StudentForm';
-import { mockStudents } from '@/lib/mockData';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { createStudentApi, deactivateStudentApi, getStudentsApi, updateStudentApi } from '@/lib/api';
+import { Edit, GraduationCap, Plus, Search, Trash2, Users } from 'lucide-react';
+
+// Shape returned by SP Get_students_list()
+type ApiStudent = {
+  id: number;
+  studentId: string | null;
+  name: string | null;              // UI uses this
+  studentName?: string | null;      // API gives this
+  dateOfBirth: string | null;
+  className: string | null;
+  sectionName: string | null;
+  parentId: number | null;
+  parentName: string | null;
+  gender: 'male' | 'female' | string | null;
+  contactPhone?: string | null;
+  contactEmail?: string | null;
+  parentPhone?: string | null;      // API may give these
+  parentEmail?: string | null;
+  status: string;
+  admissionDate?: string | null;
+};
+
 
 export default function StudentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState('all');
-  const [selectedSection, setSelectedSection] = useState('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingStudent, setEditingStudent] = useState<Student | undefined>();
-  const [deleteStudent, setDeleteStudent] = useState<Student | undefined>();
-  const [students, setStudents] = useState<Student[]>(mockStudents);
-  const [classes, setClasses] = useState<string[]>(['all']);
-  const [sections, setSections] = useState<string[]>(['all']);
+  const [editingStudent, setEditingStudent] = useState<ApiStudent | undefined>();
+  const [deleteStudent, setDeleteStudent] = useState<ApiStudent | undefined>();
+  const [students, setStudents] = useState<ApiStudent[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Fetch classes
+  const fetchStudents = async () => {
+    setLoading(true);
+    try {
+      const { data } = await getStudentsApi(); // { count, data }
+      console.log("Fetched students:", data);
+
+      const normalized = (data as any[]).map((s) => ({
+        ...s,
+        name: s.name ?? s.studentName ?? '',
+        contactPhone: s.phone ?? s.contactPhone ?? s.parentPhone ?? '',
+        contactEmail: s.email ?? s.contactEmail ?? s.parentEmail ?? '',
+        address: s.address ?? '',
+        dateOfBirth: s.dateOfBirth ? s.dateOfBirth.split('T')[0] : null,      // 👈 only YYYY-MM-DD
+        admissionDate: s.admissionDate ? s.admissionDate.split('T')[0] : null, // 👈 only YYYY-MM-DD
+        status: s.isActive ? "Active" : "Inactive",
+      }));
+
+
+      setStudents(normalized as ApiStudent[]);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+
   useEffect(() => {
-    const fetchClasses = async () => {
-      setLoading(true);
-      try {
-        const token = localStorage.getItem('access_token');
-        console.log(token);
-        const response = await fetch('https://jaja-render-api.onrender.com/classes', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-        const data = await response.json();
-        setClasses(['all', ...data.map((item: { name: string }) => item.name)]);
-      } catch (error) {
-        console.error('Error fetching classes:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchClasses();
+    fetchStudents();
   }, []);
 
-  // Fetch sections
-  useEffect(() => {
-    const fetchSections = async () => {
-      setLoading(true);
-      try {
-        const token = localStorage.getItem('access_token');
-        const response = await fetch('https://jaja-render-api.onrender.com/sections', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-        const data = await response.json();
-        setSections(['all', ...data.map((item: { name: string }) => item.name)]);
-      } catch (error) {
-        console.error('Error fetching sections:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchSections();
-  }, []);
 
-  const filteredStudents = students.filter(student => {
-    const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         student.studentId.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesClass = selectedClass === 'all' || student.class?.name === selectedClass;
-    const matchesSection = selectedSection === 'all' || student.section?.name === selectedSection;
-    return matchesSearch && matchesClass && matchesSection;
-  });
+
+  const filteredStudents = useMemo(() => {
+    const s = searchTerm.trim().toLowerCase();
+    return students.filter(st => {
+      const matchesSearch =
+        (st.name ?? '').toLowerCase().includes(s) ||
+        (st.studentId ?? '').toLowerCase().includes(s);
+
+      const matchesClass =
+        selectedClass === "all" || st.className === selectedClass;
+
+      return matchesSearch && matchesClass;
+    });
+  }, [students, searchTerm, selectedClass]);
 
   const handleAddStudent = () => {
     setEditingStudent(undefined);
     setIsDialogOpen(true);
   };
 
-  const handleEditStudent = (student: Student) => {
+  const handleEditStudent = (student: ApiStudent) => {
     setEditingStudent(student);
     setIsDialogOpen(true);
   };
 
-  const handleDeleteStudent = (student: Student) => {
+  const handleDeleteStudent = (student: ApiStudent) => {
     setDeleteStudent(student);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (deleteStudent) {
-      setStudents(prev => prev.filter(s => s.id !== deleteStudent.id));
-      setDeleteStudent(undefined);
+      try {
+        await deactivateStudentApi(deleteStudent.id);
+
+        // ✅ refetch to update UI
+        await fetchStudents();
+
+        setDeleteStudent(undefined);
+      } catch (err) {
+        console.error(err);
+      }
     }
   };
 
-  const handleFormSubmit = async (data: Partial<Student>) => {
-    const token = localStorage.getItem('access_token');
-    if (editingStudent) {
-      // Update existing student
-      setStudents(prev => prev.map(s => 
-        s.id === editingStudent.id 
-          ? { ...s, ...data, id: editingStudent.id }
-          : s
-      ));
-      try {
-        await fetch(`/students/${editingStudent.id}`, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(data),
-        });
-      } catch (error) {
-        console.error('Error updating student:', error);
+  const handleFormSubmit = async (data: any) => {
+    try {
+      if (editingStudent) {
+        // ✅ update student
+        await updateStudentApi({ id: editingStudent.id, ...data });
+      } else {
+        // ✅ create student
+        await createStudentApi(data);
       }
-    } else {
-      // Add new student
-      const newStudent: Student = {
-        ...data as Student,
-        id: Math.max(...students.map(s => s.id), 0) + 1,
-        isActive: true,
-      };
-      setStudents(prev => [...prev, newStudent]);
-      try {
-        await fetch('/students', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(newStudent),
-        });
-      } catch (error) {
-        console.error('Error adding student:', error);
-      }
+
+      // refetch after add/edit
+      await fetchStudents();
+
+      setIsDialogOpen(false);
+      setEditingStudent(undefined);
+    } catch (err) {
+      throw err; // let StudentForm show toast
     }
-    setIsDialogOpen(false);
-    setEditingStudent(undefined);
   };
 
-  const getGenderColor = (gender?: string) => {
+
+  const getGenderColor = (gender?: string | null) => {
     switch (gender) {
       case 'male': return 'bg-blue-100 text-blue-800';
       case 'female': return 'bg-pink-100 text-pink-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
+
+  const cap = (g?: string | null) =>
+    g ? g.charAt(0).toUpperCase() + g.slice(1) : 'N/A';
+
+  const maleCount = students.filter(s => s.gender === 'male').length;
+  const femaleCount = students.filter(s => s.gender === 'female').length;
+  const newThisYear = students.filter(
+    s => s.admissionDate && new Date(s.admissionDate).getFullYear() === new Date().getFullYear()
+  ).length;
 
   return (
     <Layout title="Students Management">
@@ -201,14 +206,12 @@ export default function StudentsPage() {
               </DialogTitle>
             </DialogHeader>
             <StudentForm
-              student={editingStudent}
+              student={editingStudent as any}
               onSubmit={handleFormSubmit}
               onCancel={() => {
                 setIsDialogOpen(false);
                 setEditingStudent(undefined);
               }}
-              // classes={classes}
-              // sections={sections}
             />
           </DialogContent>
         </Dialog>
@@ -243,41 +246,35 @@ export default function StudentsPage() {
               <p className="text-xs text-muted-foreground">Active students</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Male Students</CardTitle>
               <Users className="h-4 w-4 text-blue-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {students.filter(s => s.gender === 'male').length}
-              </div>
+              <div className="text-2xl font-bold">{maleCount}</div>
               <p className="text-xs text-muted-foreground">Male enrollment</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Female Students</CardTitle>
               <Users className="h-4 w-4 text-pink-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {students.filter(s => s.gender === 'female').length}
-              </div>
+              <div className="text-2xl font-bold">{femaleCount}</div>
               <p className="text-xs text-muted-foreground">Female enrollment</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">New This Year</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {students.filter(s => s.admissionDate && new Date(s.admissionDate).getFullYear() === 2024).length}
-              </div>
+              <div className="text-2xl font-bold">{newThisYear}</div>
               <p className="text-xs text-muted-foreground">Recent admissions</p>
             </CardContent>
           </Card>
@@ -296,26 +293,27 @@ export default function StudentsPage() {
                   className="pl-10"
                 />
               </div>
+
+              {/* If you want dynamic classes, replace with a dropdown fed by API */}
               <select
                 value={selectedClass}
                 onChange={(e) => setSelectedClass(e.target.value)}
                 className="px-3 py-2 border border-border rounded-md bg-background"
                 disabled={loading}
               >
-                {classes.map((cls) => (
-                  <option key={cls} value={cls}>{cls}</option>
-                ))}
+                <option value="all">All Classes</option>
+                {Array.from(new Set(students.map(s => s.className).filter(Boolean)))
+                  .sort((a, b) => String(a).localeCompare(String(b))) // 🔥 ensures sorted
+                  .map(cn => {
+                    const className = String(cn); // ensure string
+                    return (
+                      <option key={className} value={className}>
+                        {className}
+                      </option>
+                    );
+                  })}
               </select>
-              <select
-                value={selectedSection}
-                onChange={(e) => setSelectedSection(e.target.value)}
-                className="px-3 py-2 border border-border rounded-md bg-background"
-                disabled={loading}
-              >
-                {sections.map((sec) => (
-                  <option key={sec} value={sec}>{sec}</option>
-                ))}
-              </select>
+
             </div>
           </CardContent>
         </Card>
@@ -342,74 +340,83 @@ export default function StudentsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredStudents.map((student) => (
-                    <TableRow key={student.id}>
-                      <TableCell className="font-medium">
-                        {student.studentId}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-3">
-                          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                            <GraduationCap className="h-5 w-5 text-blue-600" />
-                          </div>
-                          <div>
-                            <p className="font-medium">{student.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {student.dateOfBirth && new Date(student.dateOfBirth).toLocaleDateString()}
-                            </p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>{student.class?.name}</TableCell>
-                      <TableCell>{student.section?.name}</TableCell>
-                      {/* <TableCell>{student.parent?.full_name}</TableCell> */}
-                      <TableCell>
-                        <Badge className={getGenderColor(student.gender)}>
-                          {student.gender 
-                            ? student.gender.charAt(0).toUpperCase() + student.gender.slice(1)
-                            : 'Unknown'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <p className="text-sm">{student.phone}</p>
-                          <p className="text-xs text-muted-foreground">{student.email}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={student.isActive ? 'default' : 'secondary'}>
-                          {student.isActive ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="sm">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleEditStudent(student)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-red-600 hover:text-red-700"
-                            onClick={() => handleDeleteStudent(student)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={9} className="text-center py-8">
+                        Loading…
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    filteredStudents.map((student) => (
+                      <TableRow key={student.id}>
+                        <TableCell className="font-medium">
+                          {student.studentId}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center space-x-3">
+                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                              <GraduationCap className="h-5 w-5 text-blue-600" />
+                            </div>
+                            <div>
+                              <p className="font-medium">{student.name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {student.dateOfBirth &&
+                                  new Date(student.dateOfBirth).toLocaleDateString('en-GB', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: 'numeric',
+                                  })}
+                              </p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{student.className}</TableCell>
+                        <TableCell>{student.sectionName}</TableCell>
+                        <TableCell>{student.parentName}</TableCell>
+                        <TableCell>
+                          <Badge className={getGenderColor(student.gender)}>
+                            {cap(student.gender)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="text-sm">{student.contactPhone}</p>
+                            <p className="text-xs text-muted-foreground">{student.contactEmail}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="default">{student.status}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            {/* <Button variant="ghost" size="sm">
+                              <Eye className="h-4 w-4" />
+                            </Button> */}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditStudent(student)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600 hover:text-red-700"
+                              onClick={() => handleDeleteStudent(student)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>
-            
-            {filteredStudents.length === 0 && (
+
+            {!loading && filteredStudents.length === 0 && (
               <div className="text-center py-8">
                 <GraduationCap className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground">No students found matching your search.</p>
