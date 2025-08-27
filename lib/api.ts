@@ -426,7 +426,7 @@ export const deleteSubjectApi = async (id: number) => {
 };
 
 
-// ===== Student APIs =====
+        //================== ===== Student APIs ==========================================
 export const createStudentApi = async (payload: any) => {
   const res = await authFetch(`${API_URL}/students`, {
     method: "POST",
