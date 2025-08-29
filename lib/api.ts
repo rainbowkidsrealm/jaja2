@@ -520,3 +520,234 @@ export const getSectionsApi = async () => {
 
   return res.json(); // returns array of sections
 };
+
+
+// ✅ Add marks
+export const addMarksApi = async (payload: any) => {
+  const res = await authFetch(`${API_URL}/api/marks`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to add marks: ${errorText}`);
+  }
+
+  return res.json();
+};
+
+// ✅ Fetch classes for marks form
+export const getClassesForMarksApi = async () => {
+  const res = await authFetch(`${API_URL}/api/marks/classes`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to fetch classes: ${errorText}`);
+  }
+
+  return res.json();
+};
+
+// ✅ Fetch students by class
+export const getStudentsForMarksApi = async (classId: number) => {
+  const res = await authFetch(`${API_URL}/api/marks/students/${classId}`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to fetch students: ${errorText}`);
+  }
+
+  return res.json();
+};
+
+// ✅ Fetch subjects
+export const getSubjectsForMarksApi = async () => {
+  const res = await authFetch(`${API_URL}/api/marks/subjects`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to fetch subjects: ${errorText}`);
+  }
+
+  return res.json();
+};
+
+// 🔹 Get all marks
+export const getMarksApi = async () => {
+  const res = await authFetch(`${API_URL}/api/marks`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to fetch marks: ${errorText}`);
+  }
+
+  return res.json();
+};
+
+// 🔹 Get marks for a single student
+export const getStudentMarksApi = async (studentId: number) => {
+  const res = await authFetch(`${API_URL}/api/marks/${studentId}`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to fetch student marks: ${errorText}`);
+  }
+
+  return res.json();
+};
+
+// Update Marks
+export const updateMarksApi = async (
+  id: number,
+  mark: {
+    studentId: number;
+    subjectId: number;
+    classId: number;
+    examType: string;
+    marksObtained: number;
+    totalMarks: number;
+    examDate?: string;
+    remarks?: string;
+  }
+) => {
+  const res = await authFetch(`${API_URL}/api/marks/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(mark),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to update mark: ${errorText}`);
+  }
+
+  return res.json();
+};
+
+
+//============================================entry and exit================================================
+
+
+// ===== Entry/Exit APIs =====
+export const addStudentEntryExitApi = async (
+  studentId: number,
+  status: "ENTRY" | "EXIT",
+  classId: number,
+  sectionId: number
+) => {
+  const res = await authFetch(`${API_URL}/student-entry-exit`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ studentId, status, classId, sectionId }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to add entry/exit: ${errorText}`);
+  }
+
+  return res.json();
+};
+
+export const getStudentsByClassSectionApi = async (
+  classId: number,
+  sectionId: number
+) => {
+  if (!classId || !sectionId) {
+    throw new Error("classId and sectionId are required to fetch students");
+  }
+
+  try {
+    const res = await authFetch(
+      `${API_URL}/students-by-class-section?classId=${classId}&sectionId=${sectionId}`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Failed to fetch students: ${errorText}`);
+    }
+
+    return res.json();
+  } catch (error) {
+    console.error("getStudentsByClassSectionApi error:", error, {
+      classId,
+      sectionId,
+    });
+    throw error;
+  }
+};
+
+// ✅ Get student entry/exit logs (uses stored procedure)
+export const getStudentEntryExitApi = async (
+  date: string,
+  classId?: number,
+  sectionId?: number
+) => {
+  const params = new URLSearchParams();
+  params.append("date", date);
+  if (classId) params.append("classId", String(classId));
+  if (sectionId) params.append("sectionId", String(sectionId));
+
+  const response = await authFetch(
+    `${API_URL}/students-entry-exit?${params.toString()}`,
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to fetch student entry/exit data: ${errorText}`);
+  }
+
+  return response.json();
+};
+// Get Sections by Class API
+export const getSectionsApientryexit = async (classId: number) => {
+  if (!classId) {
+    throw new Error("classId is required to fetch sections");
+  }
+
+  try {
+    const res = await authFetch(
+      `${API_URL}/sections?classId=${classId}`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Failed to fetch sections: ${errorText}`);
+    }
+
+    return res.json();
+  } catch (error) {
+    console.error("getSectionsApi error:", error, { classId });
+    throw error;
+  }
+};
+

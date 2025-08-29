@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,93 +21,88 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Plus, Search, Edit, Eye, BarChart3, TrendingUp, TrendingDown } from 'lucide-react';
+import {
+  Plus,
+  Search,
+  Edit,
+  Eye,
+  BarChart3,
+  TrendingUp,
+  TrendingDown,
+} from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Mark } from '@/types';
 import { MarkForm } from '@/components/Forms/MarkForm';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import {
+  getMarksApi,
+  getClassesForMarksApi,
+  getSubjectsForMarksApi,
+} from '@/lib/api';
 
 export default function MarksPage() {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState('all');
   const [selectedSubject, setSelectedSubject] = useState('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingMark, setEditingMark] = useState<Mark | undefined>();
-  const { user } = useAuth();
+  const [marks, setMarks] = useState<Mark[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [classes, setClasses] = useState<any[]>([]);
+  const [subjects, setSubjects] = useState<any[]>([]);
 
-  // Mock data - replace with actual API calls
-// Mock data - replace with actual API calls
-const [marks, setMarks] = useState<Mark[]>([
-  {
-    id: 1,
-    studentId: 1,
-    subjectId: 1,
-    classId: 1,
-    examType: 'midterm',
-    marksObtained: 85,
-    totalMarks: 100,
-    examDate: '2024-01-15',
-    createdBy: 1, // required
-    student: { id: 1, studentId: 'STU001', name: 'Alice Johnson', isActive: true },
-    subject: { id: 1, name: 'Mathematics', code: 'MATH', isActive: true, classId: 1 },
-    class: { id: 1, name: 'Grade 9', isActive: true },
-  },
-  {
-    id: 2,
-    studentId: 1,
-    subjectId: 2,
-    classId: 1,
-    examType: 'quiz',
-    marksObtained: 18,
-    totalMarks: 20,
-    examDate: '2024-01-10',
-    createdBy: 1, // required
-    student: { id: 1, studentId: 'STU001', name: 'Alice Johnson', isActive: true },
-    subject: { id: 2, name: 'Physics', code: 'PHY', isActive: true, classId: 1 },
-    class: { id: 1, name: 'Grade 9', isActive: true },
-  },
-  {
-    id: 3,
-    studentId: 2,
-    subjectId: 1,
-    classId: 1,
-    examType: 'assignment',
-    marksObtained: 28,
-    totalMarks: 30,
-    examDate: '2024-01-12',
-    createdBy: 2, // required
-    student: { id: 2, studentId: 'STU002', name: 'Bob Smith', isActive: true },
-    subject: { id: 1, name: 'Mathematics', code: 'MATH', isActive: true, classId: 1 },
-    class: { id: 1, name: 'Grade 9', isActive: true },
-  },
-]);
+  const isTeacher = user?.role === 'teacher';
+  const isParent = user?.role === 'parent';
 
+  useEffect(() => {
+    const fetchFilters = async () => {
+      try {
+        const [classRes, subjectRes] = await Promise.all([
+          getClassesForMarksApi(),
+          getSubjectsForMarksApi(),
+        ]);
+        setClasses(classRes);
+        setSubjects(subjectRes);
+      } catch (err) {
+        toast.error('Failed to load filters');
+      }
+    };
+    fetchFilters();
+  }, []);
 
-  const filteredMarks = marks.filter(mark => {
-    const matchesSearch = mark.student?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         mark.subject?.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesClass = selectedClass === 'all' || mark.class?.name === selectedClass;
-    const matchesSubject = selectedSubject === 'all' || mark.subject?.name === selectedSubject;
-    return matchesSearch && matchesClass && matchesSubject;
-  });
-
-  const getPercentage = (obtained: number, total: number) => {
-    return Math.round((obtained / total) * 100);
+  const fetchMarks = async () => {
+    setLoading(true);
+    try {
+      const data = await getMarksApi();
+      const transformedMarks = data.map((item: any) => ({
+        id: item.id,
+        student: { id: item.student.id, name: item.student.name },
+        subject: { id: item.subject.id, name: item.subject.name },
+        class: { id: item.class.id, name: item.class.name },
+        examType: item.examType,
+        marksObtained: parseFloat(item.marksObtained) || 0,
+        totalMarks: parseFloat(item.totalMarks) || 0,
+        examDate: item.examDate,
+        remarks: item.remarks,
+      }));
+      setMarks(transformedMarks);
+    } catch (err) {
+      toast.error('Failed to load marks');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const getGrade = (percentage: number) => {
-    if (percentage >= 90) return 'A+';
-    if (percentage >= 80) return 'A';
-    if (percentage >= 70) return 'B';
-    if (percentage >= 60) return 'C';
-    if (percentage >= 50) return 'D';
-    return 'F';
-  };
+  useEffect(() => {
+    fetchMarks();
+  }, []);
 
-  const handleAddMark = () => {
+  const handleFormSubmit = async () => {
+    setIsDialogOpen(false);
     setEditingMark(undefined);
-    setIsDialogOpen(true);
+    fetchMarks();
   };
 
   const handleEditMark = (mark: Mark) => {
@@ -115,54 +110,63 @@ const [marks, setMarks] = useState<Mark[]>([
     setIsDialogOpen(true);
   };
 
-  const handleFormSubmit = (data: Partial<Mark>) => {
-    if (editingMark) {
-      // Update existing mark
-      setMarks(prev => prev.map(m => 
-        m.id === editingMark.id 
-          ? { ...m, ...data, id: editingMark.id }
-          : m
-      ));
-    } else {
-      // Add new mark
-      const newMark: Mark = {
-        // id: Math.max(...marks.map(m => m.id)) + 1,
-        ...data as Mark,
-        student: marks.find(m => m.studentId === data.studentId)?.student,
-        subject: marks.find(m => m.subjectId === data.subjectId)?.subject,
-        class: marks.find(m => m.classId === data.classId)?.class,
-      };
-      setMarks(prev => [...prev, newMark]);
-    }
-    setIsDialogOpen(false);
+  const handleAddMark = () => {
     setEditingMark(undefined);
+    setIsDialogOpen(true);
   };
 
-  const getGradeColor = (grade: string) => {
-    switch (grade) {
-      case 'A+': return 'text-green-600 bg-green-50';
-      case 'A': return 'text-green-600 bg-green-50';
-      case 'B': return 'text-blue-600 bg-blue-50';
-      case 'C': return 'text-yellow-600 bg-yellow-50';
-      case 'D': return 'text-orange-600 bg-orange-50';
-      case 'F': return 'text-red-600 bg-red-50';
-      default: return 'text-gray-600 bg-gray-50';
-    }
-  };
+  const getPercentage = (obtained: number, total: number) =>
+    Math.round((obtained / total) * 100) || 0;
+  const getGrade = (percentage: number) =>
+    percentage >= 90
+      ? 'A+'
+      : percentage >= 80
+      ? 'A'
+      : percentage >= 70
+      ? 'B'
+      : percentage >= 60
+      ? 'C'
+      : percentage >= 50
+      ? 'D'
+      : 'F';
+  const getGradeColor = (grade: string) =>
+    grade === 'A+' || grade === 'A'
+      ? 'text-green-600 bg-green-50'
+      : grade === 'B'
+      ? 'text-blue-600 bg-blue-50'
+      : grade === 'C'
+      ? 'text-yellow-600 bg-yellow-50'
+      : grade === 'D'
+      ? 'text-orange-600 bg-orange-50'
+      : 'text-red-600 bg-red-50';
+  const getExamTypeColor = (type: string) =>
+    type === 'quiz'
+      ? 'bg-blue-100 text-blue-800'
+      : type === 'assignment'
+      ? 'bg-green-100 text-green-800'
+      : type === 'midterm'
+      ? 'bg-purple-100 text-purple-800'
+      : type === 'final'
+      ? 'bg-red-100 text-red-800'
+      : type === 'project'
+      ? 'bg-orange-100 text-orange-800'
+      : 'bg-gray-100 text-gray-800';
 
-  const getExamTypeColor = (type: string) => {
-    switch (type) {
-      case 'quiz': return 'bg-blue-100 text-blue-800';
-      case 'assignment': return 'bg-green-100 text-green-800';
-      case 'midterm': return 'bg-purple-100 text-purple-800';
-      case 'final': return 'bg-red-100 text-red-800';
-      case 'project': return 'bg-orange-100 text-orange-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const isTeacher = user?.role === 'teacher';
-  const isParent = user?.role === 'parent';
+  const filteredMarks = marks.filter((mark) => {
+    const matchesSearch =
+      (mark.student?.name || '')
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      (mark.subject?.name || '')
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
+    const matchesClass =
+      selectedClass === 'all' || mark.class?.id?.toString() === selectedClass;
+    const matchesSubject =
+      selectedSubject === 'all' ||
+      mark.subject?.id?.toString() === selectedSubject;
+    return matchesSearch && matchesClass && matchesSubject;
+  });
 
   return (
     <Layout title="Marks Management">
@@ -171,23 +175,25 @@ const [marks, setMarks] = useState<Mark[]>([
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h2 className="text-2xl font-bold">
-              {isTeacher ? 'Marks Management' : isParent ? 'Student Marks' : 'Marks Overview'}
+              {isTeacher
+                ? 'Marks Management'
+                : isParent
+                ? "Student Marks"
+                : 'Marks Overview'}
             </h2>
             <p className="text-muted-foreground">
-              {isTeacher 
+              {isTeacher
                 ? 'Add and manage student marks and grades'
-                : isParent 
-                  ? 'View your child\'s academic performance'
-                  : 'Monitor academic performance across all students'
-              }
+                : isParent
+                ? "View your child's academic performance"
+                : 'Monitor academic performance across all students'}
             </p>
           </div>
           {isTeacher && (
             <Dialog>
               <DialogTrigger asChild>
                 <Button className="flex items-center gap-2" onClick={handleAddMark}>
-                  <Plus className="h-4 w-4" />
-                  Add Marks
+                  <Plus className="h-4 w-4" /> Add Marks
                 </Button>
               </DialogTrigger>
             </Dialog>
@@ -217,7 +223,9 @@ const [marks, setMarks] = useState<Mark[]>([
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Marks Entries</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Total Marks Entries
+              </CardTitle>
               <BarChart3 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -225,85 +233,89 @@ const [marks, setMarks] = useState<Mark[]>([
               <p className="text-xs text-muted-foreground">All assessments</p>
             </CardContent>
           </Card>
-          
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Average Score</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Average Score
+              </CardTitle>
               <TrendingUp className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {Math.round(marks.reduce((acc, mark) => acc + getPercentage(mark.marksObtained, mark.totalMarks), 0) / marks.length)}%
+                {marks.length
+                  ? Math.round(
+                      marks.reduce(
+                        (acc, mark) =>
+                          acc + getPercentage(mark.marksObtained, mark.totalMarks),
+                        0
+                      ) / marks.length
+                    )
+                  : 0}
+                %
               </div>
               <p className="text-xs text-green-600">Above average</p>
             </CardContent>
           </Card>
-          
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">A+ Grades</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Passing Rate
+              </CardTitle>
+              <TrendingDown className="h-4 w-4 text-blue-600" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {marks.filter(mark => getPercentage(mark.marksObtained, mark.totalMarks) >= 90).length}
+                {marks.length
+                  ? Math.round(
+                      (marks.filter((mark) => getPercentage(mark.marksObtained, mark.totalMarks) >= 50)
+                        .length /
+                        marks.length) *
+                        100
+                    )
+                  : 0}
+                %
               </div>
-              <p className="text-xs text-muted-foreground">Excellent performance</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Below Average</CardTitle>
-              <TrendingDown className="h-4 w-4 text-red-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {marks.filter(mark => getPercentage(mark.marksObtained, mark.totalMarks) < 60).length}
-              </div>
-              <p className="text-xs text-red-600">Need attention</p>
+              <p className="text-xs text-blue-600">Overall pass rate</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Filters and Search */}
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col lg:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by student or subject..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <select
-                value={selectedClass}
-                onChange={(e) => setSelectedClass(e.target.value)}
-                className="px-3 py-2 border border-border rounded-md bg-background"
-              >
-                <option value="all">All Classes</option>
-                <option value="Grade 9">Grade 9</option>
-                <option value="Grade 10">Grade 10</option>
-                <option value="Grade 11">Grade 11</option>
-                <option value="Grade 12">Grade 12</option>
-              </select>
-              <select
-                value={selectedSubject}
-                onChange={(e) => setSelectedSubject(e.target.value)}
-                className="px-3 py-2 border border-border rounded-md bg-background"
-              >
-                <option value="all">All Subjects</option>
-                <option value="Mathematics">Mathematics</option>
-                <option value="Physics">Physics</option>
-                <option value="Chemistry">Chemistry</option>
-                <option value="Biology">Biology</option>
-                <option value="English">English</option>
-              </select>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Filters Section */}
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by student or subject..."
+              className="pl-8"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <select
+            className="border rounded-md px-3 py-2 text-sm"
+            value={selectedClass}
+            onChange={(e) => setSelectedClass(e.target.value)}
+          >
+            <option value="all">All Classes</option>
+            {classes.map((cls) => (
+              <option key={cls.id} value={cls.id}>
+                {cls.name}
+              </option>
+            ))}
+          </select>
+          <select
+            className="border rounded-md px-3 py-2 text-sm"
+            value={selectedSubject}
+            onChange={(e) => setSelectedSubject(e.target.value)}
+          >
+            <option value="all">All Subjects</option>
+            {subjects.map((sub) => (
+              <option key={sub.id} value={sub.id}>
+                {sub.name}
+              </option>
+            ))}
+          </select>
+        </div>
 
         {/* Marks Table */}
         <Card>
@@ -311,98 +323,79 @@ const [marks, setMarks] = useState<Mark[]>([
             <CardTitle>Marks Records</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Student</TableHead>
-                    <TableHead>Subject</TableHead>
-                    <TableHead>Class</TableHead>
-                    <TableHead>Exam Type</TableHead>
-                    <TableHead>Marks</TableHead>
-                    <TableHead>Percentage</TableHead>
-                    <TableHead>Grade</TableHead>
-                    <TableHead>Date</TableHead>
-                    {isTeacher && <TableHead className="text-right">Actions</TableHead>}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredMarks.map((mark) => {
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Student</TableHead>
+                  <TableHead>Class</TableHead>
+                  <TableHead>Subject</TableHead>
+                  <TableHead>Exam Type</TableHead>
+                  <TableHead>Score</TableHead>
+                  <TableHead>Grade</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Remarks</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredMarks.length > 0 ? (
+                  filteredMarks.map((mark) => {
                     const percentage = getPercentage(mark.marksObtained, mark.totalMarks);
                     const grade = getGrade(percentage);
-                    
                     return (
                       <TableRow key={mark.id}>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{mark.student?.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {mark.student?.studentId}
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{mark.subject?.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {mark.subject?.code}
-                            </p>
-                          </div>
-                        </TableCell>
+                        <TableCell>{mark.student?.name}</TableCell>
                         <TableCell>{mark.class?.name}</TableCell>
+                        <TableCell>{mark.subject?.name}</TableCell>
                         <TableCell>
                           <Badge className={getExamTypeColor(mark.examType)}>
-                            {mark.examType.charAt(0).toUpperCase() + mark.examType.slice(1)}
+                            {mark.examType}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <div className="space-y-1">
-                            <p className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">
                               {mark.marksObtained}/{mark.totalMarks}
-                            </p>
-                            <Progress value={percentage} className="h-2" />
+                            </span>
+                            <Progress value={percentage} className="w-20 h-2" />
                           </div>
                         </TableCell>
                         <TableCell>
-                          <span className="font-medium">{percentage}%</span>
+                          <Badge className={getGradeColor(grade)}>{grade}</Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge className={getGradeColor(grade)}>
-                            {grade}
-                          </Badge>
+                          {mark.examDate
+                            ? new Date(mark.examDate).toLocaleDateString()
+                            : '-'}
                         </TableCell>
+                        <TableCell>{mark.remarks || '-'}</TableCell>
                         <TableCell>
-                          {mark.examDate && new Date(mark.examDate).toLocaleDateString()}
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEditMark(mark)}
+                              disabled={!isTeacher}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
-                        {isTeacher && (
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <Button variant="ghost" size="sm">
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => handleEditMark(mark)}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        )}
                       </TableRow>
                     );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-            
-            {filteredMarks.length === 0 && (
-              <div className="text-center py-8">
-                <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">No marks records found matching your criteria.</p>
-              </div>
-            )}
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center">
+                      No marks found
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       </div>

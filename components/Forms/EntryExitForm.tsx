@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,11 +15,36 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LogIn, LogOut, Clock, Search } from 'lucide-react';
 import { toast } from 'sonner';
-import { mockStudents, mockClasses } from '@/lib/mockData';
+import {
+  getclassesforstudents,
+  getSectionsApi,
+  getStudentsByClassSectionApi,
+  addStudentEntryExitApi,
+  getSectionsApientryexit,
+} from '@/lib/api';
 
 interface EntryExitFormProps {
   onSubmit: (data: any) => void;
   onCancel: () => void;
+}
+
+interface Student {
+  id: number;
+  studentId: string;
+  name: string;
+  classId: number;
+  sectionId: number;
+}
+
+interface Class {
+  id: number;
+  name: string;
+}
+
+interface Section {
+  id: number;
+  name: string;
+  classId: number;
 }
 
 export const EntryExitForm: React.FC<EntryExitFormProps> = ({
@@ -28,11 +53,73 @@ export const EntryExitForm: React.FC<EntryExitFormProps> = ({
 }) => {
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedSection, setSelectedSection] = useState('');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split('T')[0]
+  );
   const [searchTerm, setSearchTerm] = useState('');
-  const [entryExitData, setEntryExitData] = useState<Record<string, any>>({});
+  const [entryExitData, setEntryExitData] = useState<Record<
+    string,
+    { action: 'entry' | 'exit'; time: string }
+  >>({});
   const [loading, setLoading] = useState(false);
+  const [classes, setClasses] = useState<Class[]>([]);
+  const [sections, setSections] = useState<Section[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
 
+  // Fetch classes on mount
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        const response = await getclassesforstudents();
+        setClasses(response || []);
+      } catch (error) {
+        toast.error('Failed to fetch classes');
+        console.error('Error fetching classes:', error);
+      }
+    };
+    fetchClasses();
+  }, []);
+
+  // Fetch sections when class changes
+  useEffect(() => {
+    const fetchSections = async () => {
+      if (selectedClass) {
+        try {
+          const response = await getSectionsApientryexit(parseInt(selectedClass));
+          setSections(response.data.sections || []);
+        } catch (error) {
+          toast.error('Failed to fetch sections');
+          console.error('Error fetching sections:', error);
+        }
+      } else {
+        setSections([]);
+      }
+    };
+    fetchSections();
+  }, [selectedClass]);
+
+  // Fetch students when class and section are selected
+  useEffect(() => {
+    const fetchStudents = async () => {
+      if (selectedClass && selectedSection) {
+        try {
+          const response = await getStudentsByClassSectionApi(
+            parseInt(selectedClass),
+            parseInt(selectedSection)
+          );
+          setStudents(response.data.students || []);
+        } catch (error) {
+          toast.error('Failed to fetch students');
+          console.error('Error fetching students:', error);
+        }
+      } else {
+        setStudents([]);
+      }
+    };
+    fetchStudents();
+  }, [selectedClass, selectedSection]);
+
+  // ----------------- Submit handler -----------------
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -44,15 +131,14 @@ export const EntryExitForm: React.FC<EntryExitFormProps> = ({
       }
 
       const filteredStudents = getFilteredStudents();
-      
+
       if (filteredStudents.length === 0) {
         toast.error('No students found for selected class and section');
         return;
       }
 
-      // Check if any students have been marked
-      const markedStudents = Object.keys(entryExitData).filter(studentId => 
-        entryExitData[studentId].action
+      const markedStudents = Object.keys(entryExitData).filter(
+        (id) => entryExitData[id].action
       );
 
       if (markedStudents.length === 0) {
@@ -60,52 +146,48 @@ export const EntryExitForm: React.FC<EntryExitFormProps> = ({
         return;
       }
 
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      for (const id of markedStudents) {
+        const student = filteredStudents.find(
+          (s) => s.id.toString() === id
+        );
+        const data = entryExitData[id];
 
-      // Process each marked student
-      markedStudents.forEach(studentId => {
-        const student = filteredStudents.find(s => s.id.toString() === studentId);
-        const data = entryExitData[studentId];
-        
         if (student && data.action) {
-          onSubmit({
-            studentId: student.id,
-            studentName: student.name,
-            studentIdNumber: student.studentId,
-            class: selectedClass,
-            section: selectedSection,
-            date: selectedDate,
-            entryTime: data.action === 'entry' ? data.time : undefined,
-            exitTime: data.action === 'exit' ? data.time : undefined,
-            status: data.action === 'entry' ? 'entered' : 'exited',
-            lateEntry: data.action === 'entry' && isLateEntry(data.time),
-            earlyExit: data.action === 'exit' && isEarlyExit(data.time),
-          });
+          await addStudentEntryExitApi(
+            student.id,
+            data.action.toUpperCase() as 'ENTRY' | 'EXIT',
+            parseInt(selectedClass),
+            parseInt(selectedSection)
+          );
         }
+      }
+
+      toast.success(
+        `Entry/Exit marked for ${markedStudents.length} students!`
+      );
+
+      onSubmit({
+        date: selectedDate,
+        classId: selectedClass,
+        sectionId: selectedSection,
       });
 
-      toast.success(`Entry/Exit marked for ${markedStudents.length} students!`);
+      onCancel();
     } catch (error) {
       toast.error('Something went wrong!');
+      console.error('Error submitting entry/exit:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const getFilteredStudents = () => {
-    let students = mockStudents.filter(student => 
-      student.classId?.toString() === selectedClass &&
-      student.sectionId?.toString() === selectedSection
-    );
-
-    if (searchTerm) {
-      students = students.filter(student =>
+    if (!searchTerm) return students;
+    return students.filter(
+      (student) =>
         student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         student.studentId.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    return students;
+    );
   };
 
   const isLateEntry = (time: string) => {
@@ -120,27 +202,21 @@ export const EntryExitForm: React.FC<EntryExitFormProps> = ({
     return exitTime < earlyThreshold;
   };
 
-  const handleStudentAction = (studentId: string, action: 'entry' | 'exit', time: string) => {
-    setEntryExitData(prev => ({
+  const handleStudentAction = (
+    studentDbId: number,
+    action: 'entry' | 'exit',
+    time: string
+  ) => {
+    setEntryExitData((prev) => ({
       ...prev,
-      [studentId]: { action, time }
+      [studentDbId]: { action, time },
     }));
   };
 
-  const selectedClassData = mockClasses.find(c => c.id.toString() === selectedClass);
+  const selectedClassData = classes.find(
+    (c) => c.id.toString() === selectedClass
+  );
   const filteredStudents = getFilteredStudents();
-
-  // Parse sections if it's a string, otherwise use as array
-  const getSectionOptions = () => {
-    if (!selectedClassData) return [];
-    if (typeof selectedClassData.sections === 'string') {
-      return selectedClassData.sections.split(',').map((name, index) => ({
-        id: index + 1,
-        name: name.trim(),
-      }));
-    }
-    return selectedClassData.sections || [];
-  };
 
   const getActionIcon = (action: string) => {
     switch (action) {
@@ -165,27 +241,31 @@ export const EntryExitForm: React.FC<EntryExitFormProps> = ({
   };
 
   const getMarkedCount = () => {
-    return Object.keys(entryExitData).filter(studentId => 
-      entryExitData[studentId].action
+    return Object.keys(entryExitData).filter(
+      (studentId) => entryExitData[studentId].action
     ).length;
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Class Selection */}
+      {/* Class / Section / Date */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="space-y-2">
           <Label htmlFor="class">Class *</Label>
-          <Select value={selectedClass} onValueChange={(value) => {
-            setSelectedClass(value);
-            setSelectedSection('');
-            setEntryExitData({});
-          }}>
+          <Select
+            value={selectedClass}
+            onValueChange={(value) => {
+              setSelectedClass(value);
+              setSelectedSection('');
+              setEntryExitData({});
+              setStudents([]);
+            }}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Select class" />
             </SelectTrigger>
             <SelectContent>
-              {mockClasses.map(cls => (
+              {classes.map((cls) => (
                 <SelectItem key={cls.id} value={cls.id.toString()}>
                   {cls.name}
                 </SelectItem>
@@ -196,8 +276,8 @@ export const EntryExitForm: React.FC<EntryExitFormProps> = ({
 
         <div className="space-y-2">
           <Label htmlFor="section">Section *</Label>
-          <Select 
-            value={selectedSection} 
+          <Select
+            value={selectedSection}
             onValueChange={(value) => {
               setSelectedSection(value);
               setEntryExitData({});
@@ -208,7 +288,7 @@ export const EntryExitForm: React.FC<EntryExitFormProps> = ({
               <SelectValue placeholder="Select section" />
             </SelectTrigger>
             <SelectContent>
-              {getSectionOptions().map(section => (
+              {sections.map((section) => (
                 <SelectItem key={section.id} value={section.id.toString()}>
                   Section {section.name}
                 </SelectItem>
@@ -251,22 +331,36 @@ export const EntryExitForm: React.FC<EntryExitFormProps> = ({
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
               <div>
-                <div className="text-2xl font-bold">{filteredStudents.length}</div>
-                <div className="text-sm text-muted-foreground">Total Students</div>
+                <div className="text-2xl font-bold">
+                  {filteredStudents.length}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Total Students
+                </div>
               </div>
               <div>
-                <div className="text-2xl font-bold text-blue-600">{getMarkedCount()}</div>
+                <div className="text-2xl font-bold text-blue-600">
+                  {getMarkedCount()}
+                </div>
                 <div className="text-sm text-muted-foreground">Marked</div>
               </div>
               <div>
                 <div className="text-2xl font-bold text-green-600">
-                  {Object.values(entryExitData).filter(d => d.action === 'entry').length}
+                  {
+                    Object.values(entryExitData).filter(
+                      (d) => d.action === 'entry'
+                    ).length
+                  }
                 </div>
                 <div className="text-sm text-muted-foreground">Entries</div>
               </div>
               <div>
                 <div className="text-2xl font-bold text-orange-600">
-                  {Object.values(entryExitData).filter(d => d.action === 'exit').length}
+                  {
+                    Object.values(entryExitData).filter(
+                      (d) => d.action === 'exit'
+                    ).length
+                  }
                 </div>
                 <div className="text-sm text-muted-foreground">Exits</div>
               </div>
@@ -280,22 +374,33 @@ export const EntryExitForm: React.FC<EntryExitFormProps> = ({
         <Card>
           <CardHeader>
             <CardTitle>
-              Mark Entry/Exit - {selectedClassData?.name} Section {getSectionOptions().find(s => s.id.toString() === selectedSection)?.name}
+              Mark Entry/Exit - {selectedClassData?.name} Section{' '}
+              {
+                sections.find((s) => s.id.toString() === selectedSection)?.name
+              }
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {filteredStudents.map((student) => (
-                <div key={student.id} className="flex items-center justify-between p-4 border rounded-lg">
+                <div
+                  key={student.id}
+                  className="flex items-center justify-between p-4 border rounded-lg"
+                >
                   <div className="flex items-center space-x-3">
                     <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
                       <span className="text-sm font-medium text-blue-600">
-                        {student.name.split(' ').map(n => n[0]).join('')}
+                        {student.name
+                          .split(' ')
+                          .map((n) => n[0])
+                          .join('')}
                       </span>
                     </div>
                     <div>
                       <p className="font-medium">{student.name}</p>
-                      <p className="text-sm text-muted-foreground">{student.studentId}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {student.studentId}
+                      </p>
                     </div>
                   </div>
 
@@ -304,11 +409,17 @@ export const EntryExitForm: React.FC<EntryExitFormProps> = ({
                     <div className="flex space-x-2">
                       <Button
                         type="button"
-                        variant={entryExitData[student.id.toString()]?.action === 'entry' ? 'default' : 'outline'}
+                        variant={
+                          entryExitData[student.id]?.action === 'entry'
+                            ? 'default'
+                            : 'outline'
+                        }
                         size="sm"
                         onClick={() => {
-                          const currentTime = new Date().toTimeString().slice(0, 5);
-                          handleStudentAction(student.id.toString(), 'entry', currentTime);
+                          const currentTime = new Date()
+                            .toTimeString()
+                            .slice(0, 5);
+                          handleStudentAction(student.id, 'entry', currentTime);
                         }}
                       >
                         <LogIn className="h-4 w-4 mr-1" />
@@ -316,11 +427,17 @@ export const EntryExitForm: React.FC<EntryExitFormProps> = ({
                       </Button>
                       <Button
                         type="button"
-                        variant={entryExitData[student.id.toString()]?.action === 'exit' ? 'default' : 'outline'}
+                        variant={
+                          entryExitData[student.id]?.action === 'exit'
+                            ? 'default'
+                            : 'outline'
+                        }
                         size="sm"
                         onClick={() => {
-                          const currentTime = new Date().toTimeString().slice(0, 5);
-                          handleStudentAction(student.id.toString(), 'exit', currentTime);
+                          const currentTime = new Date()
+                            .toTimeString()
+                            .slice(0, 5);
+                          handleStudentAction(student.id, 'exit', currentTime);
                         }}
                       >
                         <LogOut className="h-4 w-4 mr-1" />
@@ -329,39 +446,55 @@ export const EntryExitForm: React.FC<EntryExitFormProps> = ({
                     </div>
 
                     {/* Time Input */}
-                    {entryExitData[student.id.toString()]?.action && (
+                    {entryExitData[student.id]?.action && (
                       <Input
                         type="time"
-                        value={entryExitData[student.id.toString()]?.time || ''}
+                        value={entryExitData[student.id]?.time || ''}
                         onChange={(e) => {
-                          const action = entryExitData[student.id.toString()]?.action;
-                          handleStudentAction(student.id.toString(), action, e.target.value);
+                          const action = entryExitData[student.id]?.action!;
+                          handleStudentAction(
+                            student.id,
+                            action,
+                            e.target.value
+                          );
                         }}
                         className="w-32"
                       />
                     )}
 
-                    {/* Current Status Badge */}
-                    {entryExitData[student.id.toString()]?.action && (
+                    {/* Status Badge */}
+                    {entryExitData[student.id]?.action && (
                       <div className="flex items-center gap-2">
-                        <Badge className={getActionColor(entryExitData[student.id.toString()]?.action)}>
-                          {getActionIcon(entryExitData[student.id.toString()]?.action)}
+                        <Badge
+                          className={getActionColor(
+                            entryExitData[student.id]?.action
+                          )}
+                        >
+                          {getActionIcon(entryExitData[student.id]?.action)}
                           <span className="ml-1">
-                            {entryExitData[student.id.toString()]?.action === 'entry' ? 'Entry' : 'Exit'}
+                            {entryExitData[student.id]?.action === 'entry'
+                              ? 'Entry'
+                              : 'Exit'}
                           </span>
                         </Badge>
-                        {entryExitData[student.id.toString()]?.action === 'entry' && 
-                         isLateEntry(entryExitData[student.id.toString()]?.time) && (
-                          <Badge variant="outline" className="text-orange-600 border-orange-200">
-                            Late
-                          </Badge>
-                        )}
-                        {entryExitData[student.id.toString()]?.action === 'exit' && 
-                         isEarlyExit(entryExitData[student.id.toString()]?.time) && (
-                          <Badge variant="outline" className="text-purple-600 border-purple-200">
-                            Early
-                          </Badge>
-                        )}
+                        {entryExitData[student.id]?.action === 'entry' &&
+                          isLateEntry(entryExitData[student.id]?.time) && (
+                            <Badge
+                              variant="outline"
+                              className="text-orange-600 border-orange-200"
+                            >
+                              Late
+                            </Badge>
+                          )}
+                        {entryExitData[student.id]?.action === 'exit' &&
+                          isEarlyExit(entryExitData[student.id]?.time) && (
+                            <Badge
+                              variant="outline"
+                              className="text-purple-600 border-purple-200"
+                            >
+                              Early
+                            </Badge>
+                          )}
                       </div>
                     )}
                   </div>
@@ -372,23 +505,29 @@ export const EntryExitForm: React.FC<EntryExitFormProps> = ({
         </Card>
       )}
 
-      {/* No Students Message */}
-      {selectedClass && selectedSection && filteredStudents.length === 0 && (
-        <Card>
-          <CardContent className="text-center py-8">
-            <p className="text-muted-foreground">No students found for the selected class and section.</p>
-          </CardContent>
-        </Card>
-      )}
+      {/* No Students */}
+      {selectedClass &&
+        selectedSection &&
+        filteredStudents.length === 0 && (
+          <Card>
+            <CardContent className="text-center py-8">
+              <p className="text-muted-foreground">
+                No students found for the selected class and section.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
       {/* Action Buttons */}
       <div className="flex justify-end gap-2 pt-4">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button 
-          type="submit" 
-          disabled={loading || filteredStudents.length === 0 || getMarkedCount() === 0}
+        <Button
+          type="submit"
+          disabled={
+            loading || filteredStudents.length === 0 || getMarkedCount() === 0
+          }
         >
           {loading ? 'Saving...' : `Save Entry/Exit (${getMarkedCount()})`}
         </Button>

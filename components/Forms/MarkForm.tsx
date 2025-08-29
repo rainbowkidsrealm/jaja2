@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,70 +14,113 @@ import {
 } from '@/components/ui/select';
 import { Mark } from '@/types';
 import { toast } from 'sonner';
-import { mockStudents, mockSubjects, mockClasses } from '@/lib/mockData';
+import {
+  addMarksApi,
+  updateMarksApi,
+  getClassesForMarksApi,
+  getStudentsForMarksApi,
+  getSubjectsForMarksApi,
+} from '@/lib/api';
 
 interface MarkFormProps {
   mark?: Mark;
-  onSubmit: (data: Partial<Mark>) => void;
+  onSubmit: () => void;
   onCancel: () => void;
 }
 
-export const MarkForm: React.FC<MarkFormProps> = ({
-  mark,
-  onSubmit,
-  onCancel,
-}) => {
+export const MarkForm: React.FC<MarkFormProps> = ({ mark, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState({
-    studentId: mark?.studentId?.toString() || '',
-    subjectId: mark?.subjectId?.toString() || '',
-    classId: mark?.classId?.toString() || '',
+    studentId: mark?.student?.id?.toString() || '',
+    subjectId: mark?.subject?.id?.toString() || '',
+    classId: mark?.class?.id?.toString() || '',
     examType: mark?.examType || '',
     marksObtained: mark?.marksObtained?.toString() || '',
     totalMarks: mark?.totalMarks?.toString() || '',
-    examDate: mark?.examDate || '',
+    examDate: mark?.examDate
+      ? new Date(mark.examDate).toLocaleDateString('en-CA') // ✅ ensures YYYY-MM-DD
+      : '',
     remarks: mark?.remarks || '',
   });
 
   const [loading, setLoading] = useState(false);
+  const [classes, setClasses] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [subjects, setSubjects] = useState<any[]>([]);
+
+  // fetch classes + subjects once
+  useEffect(() => {
+    getClassesForMarksApi()
+      .then(setClasses)
+      .catch(() => toast.error('Failed to load classes'));
+
+    getSubjectsForMarksApi()
+      .then(setSubjects)
+      .catch(() => toast.error('Failed to load subjects'));
+  }, []);
+
+  // fetch students when class changes
+  useEffect(() => {
+    if (formData.classId) {
+      getStudentsForMarksApi(parseInt(formData.classId))
+        .then(setStudents)
+        .catch(() => toast.error('Failed to load students'));
+    } else {
+      setStudents([]);
+    }
+  }, [formData.classId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     setLoading(true);
 
     try {
-      // Validate required fields
-      if (!formData.studentId || !formData.subjectId || !formData.examType || 
-          !formData.marksObtained || !formData.totalMarks) {
+      if (
+        !formData.studentId ||
+        !formData.subjectId ||
+        !formData.classId ||
+        !formData.examType ||
+        !formData.marksObtained ||
+        !formData.totalMarks
+      ) {
         toast.error('Please fill in all required fields');
         return;
       }
 
-      // Validate marks
       const obtained = parseFloat(formData.marksObtained);
       const total = parseFloat(formData.totalMarks);
-      
       if (obtained > total) {
         toast.error('Marks obtained cannot be greater than total marks');
         return;
       }
-
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      onSubmit({
-        ...formData,
+      const payload = {
         studentId: parseInt(formData.studentId),
         subjectId: parseInt(formData.subjectId),
         classId: parseInt(formData.classId),
+        examType: formData.examType as
+          | "quiz"
+          | "assignment"
+          | "midterm"
+          | "final"
+          | "project",
         marksObtained: obtained,
         totalMarks: total,
-        createdBy: 1, // Current teacher ID
-        examType: formData.examType as 'quiz' | 'assignment' | 'midterm' | 'final' | 'project',
-        examDate: formData.examDate,
-        remarks: formData.remarks,
-      });
+        examDate: formData.examDate || undefined, // ✅ use undefined instead of null
+        remarks: formData.remarks || undefined,   // ✅ use undefined instead of null
+      };
       
+      if (mark?.id) {
+        await updateMarksApi(mark.id, payload);
+        toast.success("Marks updated successfully!");
+      } else {
+        await addMarksApi(payload);
+        toast.success("Marks added successfully!");
+      }
       
-      toast.success(mark ? 'Marks updated successfully!' : 'Marks added successfully!');
+
+      onSubmit();
     } catch (error) {
+      console.error('Submission error:', error);
       toast.error('Something went wrong!');
     } finally {
       setLoading(false);
@@ -85,28 +128,27 @@ export const MarkForm: React.FC<MarkFormProps> = ({
   };
 
   const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
-
-  const selectedClass = mockClasses.find(c => c.id.toString() === formData.classId);
-  const filteredStudents = mockStudents.filter(s => 
-    !formData.classId || s.classId?.toString() === formData.classId
-  );
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Class */}
         <div className="space-y-2">
           <Label htmlFor="class">Class *</Label>
-          <Select value={formData.classId} onValueChange={(value) => {
-            handleChange('classId', value);
-            handleChange('studentId', ''); // Reset student when class changes
-          }}>
+          <Select
+            value={formData.classId}
+            onValueChange={(value) => {
+              handleChange('classId', value);
+              handleChange('studentId', '');
+            }}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Select class" />
             </SelectTrigger>
             <SelectContent>
-              {mockClasses.map(cls => (
+              {classes.map((cls) => (
                 <SelectItem key={cls.id} value={cls.id.toString()}>
                   {cls.name}
                 </SelectItem>
@@ -115,10 +157,11 @@ export const MarkForm: React.FC<MarkFormProps> = ({
           </Select>
         </div>
 
+        {/* Student */}
         <div className="space-y-2">
           <Label htmlFor="student">Student *</Label>
-          <Select 
-            value={formData.studentId} 
+          <Select
+            value={formData.studentId}
             onValueChange={(value) => handleChange('studentId', value)}
             disabled={!formData.classId}
           >
@@ -126,7 +169,7 @@ export const MarkForm: React.FC<MarkFormProps> = ({
               <SelectValue placeholder="Select student" />
             </SelectTrigger>
             <SelectContent>
-              {filteredStudents.map(student => (
+              {students.map((student) => (
                 <SelectItem key={student.id} value={student.id.toString()}>
                   {student.name} ({student.studentId})
                 </SelectItem>
@@ -135,25 +178,33 @@ export const MarkForm: React.FC<MarkFormProps> = ({
           </Select>
         </div>
 
+        {/* Subject */}
         <div className="space-y-2">
           <Label htmlFor="subject">Subject *</Label>
-          <Select value={formData.subjectId} onValueChange={(value) => handleChange('subjectId', value)}>
+          <Select
+            value={formData.subjectId}
+            onValueChange={(value) => handleChange('subjectId', value)}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Select subject" />
             </SelectTrigger>
             <SelectContent>
-              {mockSubjects.map(subject => (
-                <SelectItem key={subject.id} value={subject.id.toString()}>
-                  {subject.name} ({subject.code})
+              {subjects.map((sub) => (
+                <SelectItem key={sub.id} value={sub.id.toString()}>
+                  {sub.name} ({sub.code})
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
+        {/* Exam type */}
         <div className="space-y-2">
           <Label htmlFor="examType">Exam Type *</Label>
-          <Select value={formData.examType} onValueChange={(value) => handleChange('examType', value)}>
+          <Select
+            value={formData.examType}
+            onValueChange={(value) => handleChange('examType', value)}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Select exam type" />
             </SelectTrigger>
@@ -167,6 +218,7 @@ export const MarkForm: React.FC<MarkFormProps> = ({
           </Select>
         </div>
 
+        {/* Marks obtained */}
         <div className="space-y-2">
           <Label htmlFor="marksObtained">Marks Obtained *</Label>
           <Input
@@ -181,6 +233,7 @@ export const MarkForm: React.FC<MarkFormProps> = ({
           />
         </div>
 
+        {/* Total marks */}
         <div className="space-y-2">
           <Label htmlFor="totalMarks">Total Marks *</Label>
           <Input
@@ -195,6 +248,7 @@ export const MarkForm: React.FC<MarkFormProps> = ({
           />
         </div>
 
+        {/* Exam date */}
         <div className="space-y-2">
           <Label htmlFor="examDate">Exam Date</Label>
           <Input
@@ -206,6 +260,7 @@ export const MarkForm: React.FC<MarkFormProps> = ({
         </div>
       </div>
 
+      {/* Remarks */}
       <div className="space-y-2">
         <Label htmlFor="remarks">Remarks</Label>
         <Textarea
